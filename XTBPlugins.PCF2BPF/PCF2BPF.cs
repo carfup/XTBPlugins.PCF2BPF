@@ -1,37 +1,36 @@
 ﻿using McTools.Xrm.Connection;
 using Microsoft.Xrm.Sdk;
-using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
-using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using XrmToolBox.Extensibility;
 using System.Xml;
 using Microsoft.Xrm.Sdk.Metadata;
-using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Crm.Sdk.Messages;
+using Carfup.XTBPlugins.Controls;
+using Carfup.XTBPlugins.AppCode;
 
 namespace Carfup.XTBPlugins.PCF2BPF
 {
     public partial class PCF2BPF : PluginControlBase
     {
         private Settings mySettings;
-        public List<Entity> formsList = new List<Entity>();
         public List<Entity> bpfEntitiesList = new List<Entity>();
-        public List<Entity> bpfFormsList = new List<Entity>();
+        public Entity bpfForm = null;
         public List<Entity> pcfList = new List<Entity>();
-        public XmlDocument xmlDoc = new XmlDocument() { };
+        public List<PCFDetails> pcfAvailableDetailsList = new List<PCFDetails>();
+        public List<PCFDetails> pcfBpfFormList = new List<PCFDetails>();
         public XmlDocument xmlBPFDoc = new XmlDocument() { };
-        public List<PCFContent> controlPCFList = new List<PCFContent>();
-        public string BPFFormXml;
-        public string bpfEntityLogicalName;
         public List<AttributeMetadata> attributesMetadata = new List<AttributeMetadata>();
-        public Guid uniqueGuid = Guid.Empty;
+        private BindingSource dgvPCFParamsSource = null;
+        public PCFDetails pcfEditing;
+        public string fieldToAttachPCF;
+        public List<BpfFieldControl> bpfFieldControls = new List<BpfFieldControl>();
+
+        public ControllerManager controllerManager = null;
 
         public PCF2BPF()
         {
@@ -40,7 +39,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
         private void MyPluginControl_Load(object sender, EventArgs e)
         {
-            ShowInfoNotification("This is a notification that can lead to XrmToolBox repository !!!", new Uri("https://github.com/MscrmTools/XrmToolBox"));
+            ShowInfoNotification("This is a notification that can lead to XrmToolBox repository >< !!!", new Uri("https://github.com/MscrmTools/XrmToolBox"));
 
             // Loads or creates the settings for the plugin
             if (!SettingsManager.Instance.TryLoad(GetType(), out mySettings))
@@ -53,45 +52,23 @@ namespace Carfup.XTBPlugins.PCF2BPF
             {
                 LogInfo("Settings found and loaded");
             }
+
+            if (ConnectionDetail != null && ConnectionDetail.ServiceClient != null)
+            {
+                // creating the controller
+                controllerManager = new ControllerManager(this);
+            }
+
+            dgvPCFParamsSource = new BindingSource()
+            {
+                DataSource = null
+            };
+            dgvPCFParams.DataSource = dgvPCFParamsSource;
         }
 
         private void tsbClose_Click(object sender, EventArgs e)
         {
             CloseTool();
-        }
-
-        private void tsbSample_Click(object sender, EventArgs e)
-        {
-            // The ExecuteMethod method handles connecting to an
-            // organization if XrmToolBox is not yet connected
-            ExecuteMethod(GetAccounts);
-        }
-
-        private void GetAccounts()
-        {
-            WorkAsync(new WorkAsyncInfo
-            {
-                Message = "Getting accounts",
-                Work = (worker, args) =>
-                {
-                    args.Result = Service.RetrieveMultiple(new QueryExpression("account")
-                    {
-                        TopCount = 50
-                    });
-                },
-                PostWorkCallBack = (args) =>
-                {
-                    if (args.Error != null)
-                    {
-                        MessageBox.Show(args.Error.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                    var result = args.Result as EntityCollection;
-                    if (result != null)
-                    {
-                        MessageBox.Show($"Found {result.Entities.Count} accounts");
-                    }
-                }
-            });
         }
 
         /// <summary>
@@ -118,308 +95,268 @@ namespace Carfup.XTBPlugins.PCF2BPF
                 LogInfo("Connection has changed to: {0}", detail.WebApplicationUrl);
             }
         }
-
-        private void btnLoadForms_Click(object sender, EventArgs e)
-        {
-            formsList = Service.RetrieveMultiple(new QueryExpression()
-            {
-                EntityName = "systemform",
-                ColumnSet = new ColumnSet("name", "formxml"),
-                Criteria =
-                {
-                    Conditions =
-                    {
-                        new ConditionExpression("formxml", ConditionOperator.Like, "%<customControl%"),
-                        new ConditionExpression("objecttypecode", ConditionOperator.Equal, cbEntitiesList.SelectedItem.ToString())
-                    }
-                }
-            }).Entities.ToList();
-
-            cbFormsList.Items.Clear();
-            cbFormsList.Items.AddRange(formsList.Select(x => x.GetAttributeValue<string>("name")).ToArray());
-
-        }
-
-        private void cbFormsList_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            var selectedForm = formsList.First(x => x.GetAttributeValue<string>("name") == cbFormsList.SelectedItem.ToString()).GetAttributeValue<string>("formxml");
-            xmlDoc.LoadXml(selectedForm);
-            var pcfs = xmlDoc.SelectNodes("//controlDescription");
-            controlPCFList = new List<PCFContent>();
-            foreach (XmlNode control in pcfs)
-            {
-                if (control.SelectSingleNode("//datafieldname") == null)
-                    continue;
-
-                controlPCFList.Add(new PCFContent()
-                {
-                    content = control.OuterXml,
-                    id = control.Attributes["forControl"].Value,
-                    name = control.SelectSingleNode("//datafieldname").InnerText
-                });
-            }
-            cbPCFFields.Items.Clear();
-
-            cbPCFFields.Items.AddRange(controlPCFList.Select(x => x.name).ToArray());
-        }
-
-        private void btnLoadBPFForms_Click(object sender, EventArgs e)
-        {
-            cbBFPFormsList.Items.Clear();
-
-            bpfFormsList = Service.RetrieveMultiple(new QueryExpression()
-            {
-                EntityName = "systemform",
-                ColumnSet = new ColumnSet("name", "formxml"),
-                Criteria =
-                {
-                    Conditions =
-                    {
-                        new ConditionExpression("formxml", ConditionOperator.Like, "%StageStep%"),
-                        new ConditionExpression("objecttypecode", ConditionOperator.Like, cbBPFEntitiesList.SelectedItem.ToString()),
-                    }
-                }
-            }).Entities.ToList();
-
-            cbBFPFormsList.Items.AddRange(bpfFormsList.Select(x => x.GetAttributeValue<string>("name")).ToArray());
-
-            getEntityAttributesMetadata();
-        }
-
-        private void cbBFPFormsList_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            BPFFormXml = bpfFormsList.First(x => x.GetAttributeValue<string>("name") == cbBFPFormsList.SelectedItem.ToString()).GetAttributeValue<string>("formxml");
-            txbFormXml.Text = BPFFormXml;
-            xmlBPFDoc.LoadXml(BPFFormXml);
-
-            cbFieldToAttach.Items.Clear();
-
-            var bpfControls = xmlBPFDoc.SelectNodes("//control");
-            foreach(XmlNode bpfControl in bpfControls)
-                cbFieldToAttach.Items.Add(bpfControl.Attributes["datafieldname"].Value);
-
-        }
+      
         private void btnTransformFormXml_Click(object sender, EventArgs e)
         {
-            var bpfControls = xmlBPFDoc.SelectNodes("//control");
-
-            foreach (XmlNode bpfControl in bpfControls)
-            {
-                var control = cbFieldToAttach.SelectedItem.ToString() == bpfControl.Attributes["datafieldname"].Value;
-                if (control)
-                {
-                    XmlAttribute typeAttr = xmlBPFDoc.CreateAttribute("uniqueid");
-                    typeAttr.Value = "{"+uniqueGuid.ToString()+"}";
-                    bpfControl.Attributes.Append(typeAttr);
-                }
-            }
-
-            //check if controlDescriptions exist already
-            var bpfControlsControlDescriptions = xmlBPFDoc.SelectNodes("//controlDescriptions");
-            if (bpfControlsControlDescriptions.Count == 1)
-            {
-                // Append controldescription
-                /*var controlDescriptions = "";
-                foreach (var c in controlPCFList.Where(x => x.added))
-                {
-                    controlDescriptions += c.content;
-                }*/
-                var controlDescriptions = $"{tbControlDescription.Text}</controlDescriptions>";
-                xmlBPFDoc.InnerXml = xmlBPFDoc.InnerXml.Replace("</controlDescriptions>", controlDescriptions);
-
-            }
-            else
-            {
-                // add the full part
-                var controlDescriptions = $"<controlDescriptions>{tbControlDescription.Text}</controlDescriptions></form>";
-                /*foreach (var c in controlPCFList.Where(x => x.added))
-                {
-                    controlDescriptions += c.content;
-                }
-                controlDescriptions += "</controlDescriptions></form>";*/
-
-                xmlBPFDoc.InnerXml = xmlBPFDoc.InnerXml.Replace("</form>", controlDescriptions);
-            }
-
-            txbModifiedFormXml.Text = xmlBPFDoc.InnerXml;
+            txbModifiedFormXml.Text = this.controllerManager.xmlManager.generateBpfFormXml(pcfBpfFormList, xmlBPFDoc);
         }
 
         private void btnLoadEntities_Click(object sender, EventArgs e)
         {
-            bpfEntitiesList = Service.RetrieveMultiple(new QueryExpression()
-            {
-                EntityName = "workflow",
-                ColumnSet = new ColumnSet(true),
-                Criteria =
-                {
-                    Conditions =
-                    {
-                        new ConditionExpression("category", ConditionOperator.Equal, 4)
-                    }
-                }
-            }).Entities.ToList();
+            bpfEntitiesList = this.controllerManager.dataManager.retrieveBPFEntities();
 
-
-          /*  List<EntityMetadata> entities = new List<EntityMetadata>();
-
-            RetrieveAllEntitiesRequest request = new RetrieveAllEntitiesRequest
-            {
-                RetrieveAsIfPublished = true,
-                EntityFilters = EntityFilters.Entity
-            };
-
-            RetrieveAllEntitiesResponse response = (RetrieveAllEntitiesResponse)Service.Execute(request);
-
-            entities = response.EntityMetadata.Where(x => x.DisplayName.UserLocalizedLabel != null && (x.IsCustomizable.Value || x.IsManaged.Value == false)).ToList();
-            */
-          //  cbEntitiesList.Items.Clear();
             cbBPFEntitiesList.Items.Clear();
 
-          //  cbEntitiesList.Items.AddRange(entities.Where(x => !x.IsBPFEntity.Value).Select(x => x.LogicalName).ToArray());
             cbBPFEntitiesList.Items.AddRange(bpfEntitiesList.Select(x => x.GetAttributeValue<string>("uniquename")).Distinct().ToArray());
 
             // Load possible entities
-            pcfList = Service.RetrieveMultiple(new QueryExpression()
-            {
-                EntityName = "customcontrol",
-                ColumnSet = new ColumnSet("compatibledatatypes", "manifest", "name")
-            }).Entities.ToList();
+            pcfList = this.controllerManager.dataManager.retrievePcfList();
+
+            pcfAvailableDetailsList = this.controllerManager.xmlManager.pcfDetailsFromManifest(pcfList);
         }
 
         private void cbBPFEntitiesList_SelectedIndexChanged(object sender, EventArgs e)
         {
-            bpfEntityLogicalName = bpfEntitiesList.First(x => x.GetAttributeValue<string>("uniquename") == cbBPFEntitiesList.SelectedItem.ToString()).GetAttributeValue<string>("primaryentity");
+            var bpfEntityLogicalName = cbBPFEntitiesList.SelectedItem.ToString();
+            var bpfPrimaryEntityLogicalName = bpfEntitiesList.First(x => x.GetAttributeValue<string>("uniquename") == bpfEntityLogicalName).GetAttributeValue<string>("primaryentity");
+
+            bpfForm = this.controllerManager.dataManager.retrieveBpfForm(bpfEntityLogicalName);
+
+            var bpfFormXml = bpfForm.GetAttributeValue<string>("formxml");
+            txbFormXml.Text = bpfFormXml;
+            xmlBPFDoc.LoadXml(bpfFormXml);
+
+            bpfFieldControls.Clear();
+            panel1.Controls.Clear();
+
+            var controls = new List<UserControl>();
+
+            var bpfTabs = xmlBPFDoc.SelectNodes("//tab");
+            int i = 1;
+            foreach (XmlElement bpfTab in bpfTabs)
+            {
+                controls.Add(new BpfStageControl($"Stage {i}") { Dock = DockStyle.Top });
+
+                // Getting the fields avaiable on BPF form
+                var bpfControls = bpfTab.SelectNodes(".//control");
+
+                foreach (XmlElement bpfControl in bpfControls)
+                {
+                    var fieldName = bpfControl.Attributes["datafieldname"].Value;
+                    Guid? controlId = null;
+                    if (bpfControl.Attributes["uniqueid"] != null)
+                         controlId = new Guid(bpfControl.Attributes["uniqueid"]?.Value);
+
+                    var control = new BpfFieldControl(this, fieldName, controlId);
+                    
+                    controls.Add(new BpfFieldControl(this, fieldName, controlId) { Dock = DockStyle.Top });
+                    bpfFieldControls.Add(control);
+                }
+
+                i++;
+            }
+
+            controls.Reverse();
+            panel1.Controls.AddRange(controls.ToArray());
+
+            attributesMetadata = this.controllerManager.dataManager.getEntityAttributesMetadata(bpfPrimaryEntityLogicalName);
+            pcfBpfFormList = this.controllerManager.xmlManager.getExistingPCFDetails(xmlBPFDoc, bpfFieldControls.Select(x => x.name).ToList());
+        }
+
+        public void reloadPanel()
+        {
+            panel1.Refresh();
+            panel1.Invalidate();
         }
 
         private void btnUpdatePublish_Click(object sender, EventArgs e)
         {
-            var formId = bpfFormsList.First(x => x.GetAttributeValue<string>("name") == cbBFPFormsList.SelectedItem.ToString()).Id;
-            var form = new Entity("systemform", formId)
-            {
-                ["formxml"] = txbModifiedFormXml.Text
-            };
-            Service.Update(form);
-
-            var paramXml = string.Format(" <importexportxml><entities><entity>{0}</entity></entities><nodes/><securityroles/><settings/><workflows/></importexportxml>", cbBPFEntitiesList.SelectedItem.ToString());
-            Service.Execute(new PublishXmlRequest
-            {
-                ParameterXml = paramXml
-            });
+            txbModifiedFormXml.Text = this.controllerManager.xmlManager.generateBpfFormXml(pcfBpfFormList, xmlBPFDoc);
+            this.controllerManager.dataManager.updatePublishForm(bpfForm.Id, txbModifiedFormXml.Text, cbBPFEntitiesList.SelectedItem.ToString());
         }
 
-        public void getEntityAttributesMetadata()
-        {
-            RetrieveEntityRequest retrieveEntityAttributesRequest = new RetrieveEntityRequest
-            {
-                EntityFilters = EntityFilters.Attributes,
-                LogicalName = bpfEntityLogicalName
-            };
-            var metadata = (RetrieveEntityResponse)Service.Execute(retrieveEntityAttributesRequest);
-            attributesMetadata = metadata.EntityMetadata.Attributes.ToList();
-        }
 
-        private void cbFieldToAttach_SelectedIndexChanged(object sender, EventArgs e)
+        public void setPossiblePCf(string field)
         {
-            cbPossiblePCFs.Items.Clear();
-            var fieldDefinition = attributesMetadata.First(x => x.LogicalName == cbFieldToAttach.SelectedItem.ToString());
+            resetPossiblePCF();
+
+            var fieldDefinition = attributesMetadata.First(x => x.LogicalName == field);
             var searchType = getTypeMapping(fieldDefinition.AttributeType.Value.ToString());
-            var potentialPCFs = pcfList.Where(x => x.GetAttributeValue<string>("compatibledatatypes") != "" && x.GetAttributeValue<string>("compatibledatatypes").Contains(searchType));
-            var potentialPCFsName = potentialPCFs.Select(x => x.GetAttributeValue<string>("name"));
-            cbPossiblePCFs.Items.AddRange(pcfList.Where(x => x.GetAttributeValue<string>("compatibledatatypes").Contains(searchType)).Select(x => x.GetAttributeValue<string>("name")).OrderBy(x => x).ToArray());
+            var searchTypes = searchType.Split(';');
+            var potentialPCFs = pcfList.Where(x => x.GetAttributeValue<string>("compatibledatatypes") != "" && x.GetAttributeValue<string>("compatibledatatypes").Split(',').Any(y => searchTypes.Contains(y)));
+            cbPossiblePCFs.Items.AddRange(potentialPCFs.Select(x => x.GetAttributeValue<string>("name")).OrderBy(y => y).ToArray());
+
+            fieldToAttachPCF = field;
+            cbPossiblePCFs.Enabled = true;
+        }
+
+        public void setExistingPCFDetails(string field, Guid id)
+        {
+            resetPossiblePCF();
+
+            tbControlDescription.Text = "";
+            setPossiblePCf(field);
+
+            pcfEditing = pcfBpfFormList.First(x => x.id == id);
+
+            // Auto select the dropdown list here & disable it
+            cbPossiblePCFs.Enabled = false;
+            cbPossiblePCFs.SelectedText = pcfEditing.name;
+            
+            dgvPCFParamsSource.DataSource = pcfEditing.parameters;
+        }
+
+        public void setDeletePCFDetails(Guid id)
+        {
+            // we reset the control in the list
+            var pcfToDelete = pcfBpfFormList.FirstOrDefault(x => x.id == id);
+            pcfToDelete.action = actions.delete;
+
+            pcfBpfFormList.Add(new PCFDetails()
+            {
+                attachedField = pcfToDelete.attachedField,
+                action = actions.none
+            });
+
+            this.controllerManager.xmlManager.generateBpfFormXml(pcfBpfFormList, xmlBPFDoc);
+        }
+
+        private void resetPossiblePCF()
+        {
+            pcfEditing = null;
+            cbPossiblePCFs.Items.Clear();
+            cbPossiblePCFs.SelectedIndex = -1;
+            cbPossiblePCFs.ResetText();
+            dgvPCFParamsSource.DataSource = null;
         }
 
         public string getTypeMapping(string typeValue)
         {
             switch (typeValue)
             {
-                case "Money": return "Currency"; break;
-                case "Integer": return "Whole.None"; break;
-                default: return "SingleLine.Text";
+                case "Money": return "Currency";
+                case "Integer": return "Whole.None"; 
+                case "Lookup": return "Lookup.Simple";
+                case "DateTime": return "DateAndTime.DateAndTime";
+                case "Decimal": return "Decimal";
+                case "BigInt": return "Whole.None";
+                case "Boolean": return "TwoOptions";
+                case "Picklist": return "OptionSet";
+                case "Memo": return "Multiple;SingleLine.TextArea";
+                default: return "SingleLine.Text;SingleLine.Email;SingleLine.URL";
             }
-        }
-
-        private void cbEntitiesList_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            bpfEntityLogicalName = bpfEntitiesList.First(x => x.GetAttributeValue<string>("uniquename") == cbEntitiesList.SelectedItem.ToString()).GetAttributeValue<string>("primaryentity");
         }
 
         private void cbPossiblePCFs_SelectedIndexChanged(object sender, EventArgs e)
         {
+            tbControlDescription.Text = "";
+
             var selectedPCF = cbPossiblePCFs.SelectedItem.ToString();
-            var controlManifest = pcfList.First(x => x.GetAttributeValue<string>("name") == selectedPCF).GetAttributeValue<string>("manifest");
+            pcfEditing = pcfAvailableDetailsList.First(x => x.name == selectedPCF);
 
-            var xmlDocPCF = new XmlDocument() { };
-            xmlDocPCF.LoadXml(controlManifest);
+            pcfEditing.parameters.First().value = fieldToAttachPCF;
+            pcfEditing.attachedField = fieldToAttachPCF;
 
-            var properties = xmlDocPCF.SelectNodes("//property");
-            var typeGroups = xmlDocPCF.SelectNodes("//type-group");
+            dgvPCFParamsSource.DataSource = pcfEditing.parameters;
 
-            List<PCFDetails> pcfDetails = new List<PCFDetails>();
+            for (int i = 0; i < dgvPCFParams.Columns.Count - 1; i++)
+                dgvPCFParams.Columns[i].AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+        }
 
-            foreach (XmlNode prop in properties)
+        private void dgvPCFParams_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex == -1)
+                return;
+
+        }
+
+        private void btnApplyChanges_Click(object sender, EventArgs e)
+        {
+            var requiredFieldsEmpty = pcfEditing.parameters.Any(x => x.required && x.value == null);
+
+            if (requiredFieldsEmpty)
             {
-                pcfDetails.Add(new PCFDetails
-                {
-                    name = prop.Attributes["name"].Value,
-                    description = prop.Attributes["description-key"].Value,
-                    required = prop.Attributes["required"].Value == "true" ? true : false,
-                    usage = prop.Attributes["usage"].Value,
-                    ofType = prop.Attributes["of-type"] != null ? prop.Attributes["of-type"].Value : null,
-                    ofTypeGroup = prop.Attributes["of-type-group"] != null ? prop.Attributes["of-type-group"].Value : null,
-                });
+                MessageBox.Show("One or more required fields are empty, please fill them.");
+                return;
+            }
+            //pcfBPFFormList.First(x => x.id == pcfEditing.id).parameters = pcfEditing.parameters;
+            pcfEditing.action = actions.modify;
+
+            var element = pcfBpfFormList.First(x => x.attachedField == pcfEditing.parameters.First().value.ToString());
+            var index = pcfBpfFormList.IndexOf(element);
+            pcfBpfFormList[index] = pcfEditing;
+
+            this.controllerManager.xmlManager.generateBpfFormXml(pcfBpfFormList, xmlBPFDoc);
+        }
+
+        private void btnAddControl_Click(object sender, EventArgs e)
+        {
+            var requiredFieldsEmpty = pcfEditing.parameters.Any(x => x.required && x.value == null);
+
+            if (requiredFieldsEmpty)
+            {
+                MessageBox.Show("One or more required fields are empty, please fill them.");
+                return;
             }
 
-            var typeGroupValues = new List<PCFTypeGroup>();
-            foreach (XmlNode typeg in typeGroups)
-            {
-                foreach (XmlNode type in typeg.SelectNodes("type"))
-                    typeGroupValues.Add(new PCFTypeGroup
-                    {
-                        name = typeg.Attributes["name"].Value,
-                        type = type.InnerText,
-                    });
-            }
+            pcfEditing.action = actions.add;
 
-            uniqueGuid = Guid.NewGuid();
-            var controlDescription = "<controlDescription forControl=\"{"+uniqueGuid+"}\">";
-            controlDescription += $"<customControl name=\"{selectedPCF}\" formFactor=\"2\"><parameters>";
-            foreach(var param in pcfDetails)
-            {
-                if(param.usage == "bound")
-                    controlDescription += $"<{param.name}>{cbFieldToAttach.SelectedItem.ToString()}</{param.name}>";
-                else
-                {
-                    var expectedType = param.ofType != null ? param.ofType : param.ofTypeGroup;
-                    controlDescription += $"<{param.name} type=\"{expectedType}\">{expectedType.ToUpper()}</{param.name}>";
-                }
-                    
-            }
-            controlDescription += $"</parameters></customControl></controlDescription>";
-            tbControlDescription.Text = controlDescription;
+            var element = pcfBpfFormList.First(x => x.attachedField == pcfEditing.parameters.First().value.ToString());
+            var index = pcfBpfFormList.IndexOf(element);
+            pcfBpfFormList[index] = pcfEditing;
 
+            this.controllerManager.xmlManager.generateBpfFormXml(pcfBpfFormList, xmlBPFDoc);
         }
     }
 
-    public class PCFContent
-    {
-        public string id;
-        public string name;
-        public string content;
-        public bool added = false;
-    }
     public class PCFDetails
     {
         public string name;
-        public string description;
-        public string usage;
-        public bool required;
-        public string ofType;
-        public string ofTypeGroup;
+        public string manifest;
+        public string controlDescription;
+        public string attachedField;
+        public Guid? id = null;
+        public List<PCFParameters> parameters;
+        public List<PCFTypeGroups> typeGroup;
+        public actions action = actions.none;
     }
 
-    public class PCFTypeGroup
+    public class PCFParameters
+    {
+        [DisplayName("Param Name")]
+        public string name { get; set; }
+
+        [DisplayName("Param Desc")]
+        public string description { get; set; }
+     
+        public string usage { get; set; }                  
+
+        [DisplayName("Requied ?")]
+        public bool required { get; set; }
+
+        [DisplayName("Param Type")]
+        public string ofType { get; set; }
+
+        public string ofTypeGroup;
+
+         [DisplayName("Param Value")]
+        public object value { get; set; }
+
+        [DisplayName("Is Static ?")]
+        public bool isStatic { get; set; }
+    }
+
+    public class PCFTypeGroups
     {
         public string name;
         public string type;
+    }
+
+    public enum actions
+    {
+        none,
+        add,
+        modify,
+        delete
     }
 }
