@@ -14,62 +14,57 @@ namespace Carfup.XTBPlugins.Controls
     public partial class BpfFieldControl : UserControl
     {
         private PCF2BPF.PCF2BPF pcf2bpf;
-        public Guid? id { get; set; }
+        public Guid id { get; set; }
         public string name;
+        public bool pcfAttached = false;
 
-        public BpfFieldControl(PCF2BPF.PCF2BPF pcf2bpf, string name, Guid? id)
+        public BpfFieldControl(PCF2BPF.PCF2BPF pcf2bpf, string name, string displayName, Guid id, bool pcfAttached)
         {
             InitializeComponent();
 
             this.pcf2bpf = pcf2bpf;
             this.name = name;
-            
+            this.pcfAttached = pcfAttached;
 
-            //lblField.Text = setLabel();
+
+
+            lblField.Text = displayName ?? name;
             this.id = id;
             showHideButtons();
         }
 
-      
-        private void setLabel()
+        public void changePcfAttachedValue(bool pcfAttached = false)
         {
-            lblField.Text = $"{this.name}({this.id}) - a:{this.pbAdd.Visible} / m:{this.pbModify.Visible} / d:{this.pbDelete.Visible}";
-        }
-
-        public void changeIdValue(Guid? id = null)
-        {
-            this.id = id;
+            this.pcfAttached = pcfAttached;
             this.showHideButtons();
 
         }
 
         private void pbDelete_Click(object sender, EventArgs e)
         {
-            pcf2bpf.setDeletePCFDetails(this.id.Value);
-            this.id = null;
+            pcf2bpf.setDeletePCFDetails(this.id);
+            this.pcfAttached = false;
             this.showHideButtons();
         }
 
         private void pbModify_Click(object sender, EventArgs e)
         {
-            pcf2bpf.setExistingPCFDetails(this.name, this.id.Value);
-            //showHideButtons();
+            pcf2bpf.setExistingPCFDetails(this.name, this.id);
         }
 
         public void pbAdd_Click(object sender, EventArgs e)
         {
-            pcf2bpf.setPossiblePCf(this.name);
+            pcf2bpf.setAddPcf(this.name, this.id);
             
             showHideButtons();
         }
 
         public void showHideButtons()
         {
-            this.pbDelete.Visible = this.id.HasValue;
-            this.pbModify.Visible = this.id.HasValue;
-            this.pbAdd.Visible = !this.id.HasValue;
-           
-            setLabel();
+            var fromAnotherEntity = this.name.Contains("(from another entity)");
+            this.pbDelete.Visible = this.pcfAttached && !fromAnotherEntity;
+            this.pbModify.Visible = this.pcfAttached && !fromAnotherEntity;
+            this.pbAdd.Visible = !this.pcfAttached && !fromAnotherEntity;
         }
     }
 }

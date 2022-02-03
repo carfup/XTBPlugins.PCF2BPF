@@ -1,4 +1,5 @@
-﻿using Carfup.XTBPlugins.PCF2BPF;
+﻿using Carfup.XTBPlugins.Controls;
+using Carfup.XTBPlugins.PCF2BPF;
 using Microsoft.Xrm.Sdk;
 using System;
 using System.Collections.Generic;
@@ -35,12 +36,12 @@ namespace Carfup.XTBPlugins.AppCode
 
         #endregion Constructor
 
-        public List<PCFDetails> getExistingPCFDetails(XmlDocument xmlBpfDoc, List<string> fields = null)
+        public List<PCFDetails> getExistingPCFDetails(XmlDocument xmlBpfDoc, List<BpfFieldControl> fields = null)
         {
             var controls = xmlBpfDoc.SelectNodes("//controlDescription");
 
             List<PCFDetails> fieldsAndPcfBpfForm = new List<PCFDetails>();
-            
+
             foreach (XmlNode control in controls)
             {
                 List<PCFParameters> pcfParamsExisting = new List<PCFParameters>();
@@ -61,6 +62,9 @@ namespace Carfup.XTBPlugins.AppCode
                         usage = paramManifestDetails.usage,
                         required = paramManifestDetails.required,
                         description = paramManifestDetails.description,
+                        complexTypes = paramManifestDetails.complexTypes,
+                        complexValues = paramManifestDetails.complexValues,
+                        ofTypeGroup = paramManifestDetails.ofTypeGroup,
                     });
                 }
 
@@ -71,15 +75,17 @@ namespace Carfup.XTBPlugins.AppCode
                     parameters = pcfParamsExisting,
                     id = new Guid(control.Attributes["forControl"]?.Value),
                     controlDescription = pcfManifestDetails.controlDescription,
-                    attachedField = pcfParamsExisting.First().value.ToString()
+                    attachedField = pcfParamsExisting.First().value.ToString(),
                 });
             }
 
-            foreach (var field in fields.Except(fieldsAndPcfBpfForm.Select(x => x.attachedField)))
+            // Fields without PCF
+            foreach (var field in fields.Where(y => !fieldsAndPcfBpfForm.Select(x => x.id).Contains(y.id)))
             {
                 fieldsAndPcfBpfForm.Add(new PCFDetails()
                 {
-                    attachedField = field
+                    attachedField = field.name,
+                    id = field.id
                 });
             }
 
@@ -113,15 +119,29 @@ namespace Carfup.XTBPlugins.AppCode
 
                 List<PCFParameters> pcfParams = new List<PCFParameters>();
                 foreach (XmlNode prop in properties)
-                {
+                {   
+                    var complexValues = new List<string>();
+                    var complexTypes = new List<string>();
+                    if (prop.Attributes["of-type"]?.Value == "Enum")
+                    {
+                        complexValues = prop.ChildNodes.Cast<XmlNode>().Select(x => x.InnerText).ToList();
+                    }
+
+                    if (prop.Attributes["of-type-group"]?.Value != null)
+                    {
+                        complexTypes = typeGroupValues.Select(x => x.type).ToList();
+                    }
+
                     pcfParams.Add(new PCFParameters
                     {
                         name = prop.Attributes["name"]?.Value,
                         description = prop.Attributes["description-key"]?.Value,
                         required = prop.Attributes["required"]?.Value == "true" ? true : false,
                         usage = prop.Attributes["usage"]?.Value,
-                        ofType = prop.Attributes["of-type"]?.Value ?? typeGroupValues.FirstOrDefault(x => x.name == prop.Attributes["of-type-group"].Value)?.type,
-                        ofTypeGroup = prop.Attributes["of-type-group"] != null ? string.Join(";", typeGroupValues.Where(x => x.name == prop.Attributes["of-type-group"].Value).Select(x => x.type)) : null
+                        ofType = prop.Attributes["of-type"]?.Value ?? prop.Attributes["of-type-group"]?.Value,
+                        ofTypeGroup = prop.Attributes["of-type-group"]?.Value,
+                        complexTypes = complexTypes.ToArray(),
+                        complexValues = complexValues.ToArray()
                     });
                 }
 
@@ -139,27 +159,32 @@ namespace Carfup.XTBPlugins.AppCode
             return pcfAvailableDetailsList;
         }
 
-        public string generateBpfFormXml(List<PCFDetails> pcfList, XmlDocument xmlBpf)
+        public string generateBpfFormXml(List<PCFDetails> pcfList, XmlDocument xmlBpf, int fieldPosition = 0)
         {
-            foreach (var pcf in pcfList)
+            foreach (var pcf in pcfList.Where(x => x.action != actions.none))
             {
                 if(pcf.action == actions.add)
                 {
                     // generate controldescription
-                    var controlDescriptions = $"{constructionControlDescription(pcf, pcf.attachedField)}</controlDescriptions>";
+                    var controlDescriptions = $"{constructionControlDescription(pcf, pcf.attachedField)}";
 
                     // mapping the ID of control to field
                     var control = xmlBpf.SelectSingleNode($"//control[@datafieldname='{pcf.attachedField}']");
+
+                    if (fieldPosition != 0)
+                        control = xmlBpf.SelectNodes($"//control")[fieldPosition];
+
                     XmlAttribute typeAttr = xmlBpf.CreateAttribute("uniqueid");
                     typeAttr.Value = "{" + pcf.id.ToString() + "}";
                     control.Attributes.Append(typeAttr);
 
                     // appending the new definition to xml
-                    xmlBpf.InnerXml = xmlBpf.InnerXml.Replace("</controlDescriptions>", controlDescriptions);
+                    xmlBpf.InnerXml = xmlBpf.InnerXml.Contains("</controlDescriptions>") ?
+                            xmlBpf.InnerXml.Replace("</controlDescriptions>", $"{controlDescriptions}</controlDescriptions>") :
+                            xmlBpf.InnerXml.Replace("</form>", $"<controlDescriptions>{controlDescriptions}</controlDescriptions></form>");
 
-                    this.pcf2bpf.bpfFieldControls.First(x => x.name == pcf.attachedField).changeIdValue(pcf.id);
-                    this.pcf2bpf.bpfFieldControls.First(x => x.name == pcf.attachedField).showHideButtons();
-                    // this.pcf2bpf.bpfFieldControls.First(x => x.name == pcf.attachedField).showHideButtons();
+                    this.pcf2bpf.bpfFieldControls.First(x => x.id == pcf.id).changePcfAttachedValue(true);
+                    
                     pcf.action = actions.none;
                 }
                 else if (pcf.action == actions.modify)
@@ -194,14 +219,9 @@ namespace Carfup.XTBPlugins.AppCode
                     var parentNode = controlDescription.ParentNode;
                     if (controlDescription != null) { parentNode.RemoveChild(controlDescription); }
 
-                    this.pcf2bpf.bpfFieldControls.First(x => x.name == pcf.attachedField).changeIdValue();
-                    this.pcf2bpf.bpfFieldControls.First(x => x.name == pcf.attachedField).showHideButtons();
-
-
+                    this.pcf2bpf.bpfFieldControls.First(x => x.name == pcf.attachedField).changePcfAttachedValue();
                 }
             }
-
-            this.pcf2bpf.reloadPanel();
 
             pcfList.RemoveAll(x => x.action == actions.delete);
 
@@ -212,7 +232,7 @@ namespace Carfup.XTBPlugins.AppCode
         {
             var selectedPCF = pcfEditing.name;
             var action = pcfEditing.action;
-            pcfEditing.id = action == actions.add ? Guid.NewGuid() : pcfEditing.id;
+           // pcfEditing.id = action == actions.add ? Guid.NewGuid() : pcfEditing.id;
             var controlDescription = action == actions.add ?
                 "<controlDescription forControl=\"{" + pcfEditing.id + "}\"><customControl name=\"" + selectedPCF + "\" formFactor=\"2\"><parameters>" :
                 "<customControl name=\"" + selectedPCF + "\" formFactor=\"2\"><parameters>";

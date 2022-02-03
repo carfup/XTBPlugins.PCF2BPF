@@ -100,9 +100,6 @@ namespace Carfup.XTBPlugins.AppCode
             {
                 ParameterXml = paramXml
             });
-
-            //txbFormXml.Text = txbModifiedFormXml.Text;
-            //xmlBPFDoc.LoadXml(txbFormXml.Text);
         }
     }
 }

@@ -263,6 +263,12 @@
     <Compile Include="Controls\BpfStageControl.Designer.cs">
       <DependentUpon>BpfStageControl.cs</DependentUpon>
     </Compile>
+    <Compile Include="Controls\PcfControlParameter.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\PcfControlParameter.Designer.cs">
+      <DependentUpon>PcfControlParameter.cs</DependentUpon>
+    </Compile>
     <Compile Include="Plugin.cs" />
     <Compile Include="PCF2BPF.cs">
       <SubType>UserControl</SubType>
@@ -288,6 +294,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Controls\BpfStageControl.resx">
       <DependentUpon>BpfStageControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Controls\PcfControlParameter.resx">
+      <DependentUpon>PcfControlParameter.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="PCF2BPF.resx">
       <DependentUpon>PCF2BPF.cs</DependentUpon>

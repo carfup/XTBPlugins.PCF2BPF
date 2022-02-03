@@ -12,6 +12,9 @@ using Microsoft.Xrm.Sdk.Metadata;
 using Microsoft.Crm.Sdk.Messages;
 using Carfup.XTBPlugins.Controls;
 using Carfup.XTBPlugins.AppCode;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Runtime.Serialization;
 
 namespace Carfup.XTBPlugins.PCF2BPF
 {
@@ -25,10 +28,12 @@ namespace Carfup.XTBPlugins.PCF2BPF
         public List<PCFDetails> pcfBpfFormList = new List<PCFDetails>();
         public XmlDocument xmlBPFDoc = new XmlDocument() { };
         public List<AttributeMetadata> attributesMetadata = new List<AttributeMetadata>();
-        private BindingSource dgvPCFParamsSource = null;
         public PCFDetails pcfEditing;
         public string fieldToAttachPCF;
+        public Guid fieldIdToAttachPCF;
         public List<BpfFieldControl> bpfFieldControls = new List<BpfFieldControl>();
+        public actions actionInProgress = actions.none;
+        public Dictionary<string, string> mappingType = new Dictionary<string, string>();
 
         public ControllerManager controllerManager = null;
 
@@ -39,8 +44,6 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
         private void MyPluginControl_Load(object sender, EventArgs e)
         {
-            ShowInfoNotification("This is a notification that can lead to XrmToolBox repository >< !!!", new Uri("https://github.com/MscrmTools/XrmToolBox"));
-
             // Loads or creates the settings for the plugin
             if (!SettingsManager.Instance.TryLoad(GetType(), out mySettings))
             {
@@ -59,11 +62,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
                 controllerManager = new ControllerManager(this);
             }
 
-            dgvPCFParamsSource = new BindingSource()
-            {
-                DataSource = null
-            };
-            dgvPCFParams.DataSource = dgvPCFParamsSource;
+            loadMappingTypes();
         }
 
         private void tsbClose_Click(object sender, EventArgs e)
@@ -95,119 +94,208 @@ namespace Carfup.XTBPlugins.PCF2BPF
                 LogInfo("Connection has changed to: {0}", detail.WebApplicationUrl);
             }
         }
-      
-        private void btnTransformFormXml_Click(object sender, EventArgs e)
-        {
-            txbModifiedFormXml.Text = this.controllerManager.xmlManager.generateBpfFormXml(pcfBpfFormList, xmlBPFDoc);
-        }
 
         private void btnLoadEntities_Click(object sender, EventArgs e)
         {
-            bpfEntitiesList = this.controllerManager.dataManager.retrieveBPFEntities();
-
-            cbBPFEntitiesList.Items.Clear();
-
-            cbBPFEntitiesList.Items.AddRange(bpfEntitiesList.Select(x => x.GetAttributeValue<string>("uniquename")).Distinct().ToArray());
-
-            // Load possible entities
-            pcfList = this.controllerManager.dataManager.retrievePcfList();
-
-            pcfAvailableDetailsList = this.controllerManager.xmlManager.pcfDetailsFromManifest(pcfList);
+            ExecuteMethod(PrivateLoadEntities);
         }
 
-        private void cbBPFEntitiesList_SelectedIndexChanged(object sender, EventArgs e)
+        private void PrivateLoadEntities()
         {
-            var bpfEntityLogicalName = cbBPFEntitiesList.SelectedItem.ToString();
-            var bpfPrimaryEntityLogicalName = bpfEntitiesList.First(x => x.GetAttributeValue<string>("uniquename") == bpfEntityLogicalName).GetAttributeValue<string>("primaryentity");
-
-            bpfForm = this.controllerManager.dataManager.retrieveBpfForm(bpfEntityLogicalName);
-
-            var bpfFormXml = bpfForm.GetAttributeValue<string>("formxml");
-            txbFormXml.Text = bpfFormXml;
-            xmlBPFDoc.LoadXml(bpfFormXml);
-
-            bpfFieldControls.Clear();
-            panel1.Controls.Clear();
-
-            var controls = new List<UserControl>();
-
-            var bpfTabs = xmlBPFDoc.SelectNodes("//tab");
-            int i = 1;
-            foreach (XmlElement bpfTab in bpfTabs)
+            WorkAsync(new WorkAsyncInfo
             {
-                controls.Add(new BpfStageControl($"Stage {i}") { Dock = DockStyle.Top });
-
-                // Getting the fields avaiable on BPF form
-                var bpfControls = bpfTab.SelectNodes(".//control");
-
-                foreach (XmlElement bpfControl in bpfControls)
+                Message = "Loading BPF Entities...",
+                Work = (bw, e) =>
                 {
-                    var fieldName = bpfControl.Attributes["datafieldname"].Value;
-                    Guid? controlId = null;
-                    if (bpfControl.Attributes["uniqueid"] != null)
-                         controlId = new Guid(bpfControl.Attributes["uniqueid"]?.Value);
+                    bpfEntitiesList = this.controllerManager.dataManager.retrieveBPFEntities();
 
-                    var control = new BpfFieldControl(this, fieldName, controlId);
+                    bw.ReportProgress(0, "Loading available PCF in your environment...");
+
+                    pcfList = this.controllerManager.dataManager.retrievePcfList();
+                    pcfAvailableDetailsList = this.controllerManager.xmlManager.pcfDetailsFromManifest(pcfList);
+                },
+                PostWorkCallBack = e =>
+                {
+                    if (e.Error != null)
+                    {
+                        // this.log.LogData(EventType.Exception, LogAction.UsersLoaded, e.Error);
+                        MessageBox.Show(this, e.Error.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    if (bpfEntitiesList != null)
+                    {
+                        cbBPFEntitiesList.Items.Clear();
+                        cbBPFEntitiesList.Items.AddRange(bpfEntitiesList.Select(x => x.GetAttributeValue<string>("name")).OrderBy(x => x).Distinct().ToArray());
+                    }
+
+                    cbBPFEntitiesList.Enabled = true;
+                },
+                ProgressChanged = e => { SetWorkingMessage(e.UserState.ToString()); }
+            });
+        }
+
+        private void cbBPFEntitiesList_SelectedIndexChanged(object sender, EventArgs evt)
+        {
+            var selectedBPFEntity = bpfEntitiesList.First(x => x.GetAttributeValue<string>("name") == cbBPFEntitiesList.SelectedItem.ToString());
+            var bpfPrimaryEntityLogicalName = selectedBPFEntity.GetAttributeValue<string>("primaryentity");
+            var bpfEntityLogicalName = selectedBPFEntity.GetAttributeValue<string>("uniquename");
+
+            panelRight.Visible = false;
+
+            WorkAsync(new WorkAsyncInfo
+            {
+                Message = "Loading BPF Form details",
+                Work = (bw, e) =>
+                {
+                    bpfForm = this.controllerManager.dataManager.retrieveBpfForm(bpfEntityLogicalName);
+
+                    bw.ReportProgress(0, "Loading related metadata...");
+                    attributesMetadata = this.controllerManager.dataManager.getEntityAttributesMetadata(bpfPrimaryEntityLogicalName);
+                },
+                PostWorkCallBack = e =>
+                {
+                    if (e.Error != null)    
+                    {
+                        // this.log.LogData(EventType.Exception, LogAction.UsersLoaded, e.Error);
+                        MessageBox.Show(this, e.Error.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    var bpfFormXml = bpfForm.GetAttributeValue<string>("formxml");
+                    txbFormXml.Text = bpfFormXml;
+                    xmlBPFDoc.LoadXml(bpfFormXml);
+
+                    bpfFieldControls.Clear();
+                    panel1.Controls.Clear();
+
+                    var controls = new List<UserControl>();
+
+                    var bpfTabs = xmlBPFDoc.SelectNodes("//tab");
+                    int i = 1;
+                    foreach (XmlElement bpfTab in bpfTabs)
+                    {
+                        controls.Add(new BpfStageControl($"Stage {i}") { Dock = DockStyle.Top });
+
+                        // Getting the fields avaiable on BPF form
+                        var bpfControls = bpfTab.SelectNodes(".//control");
+
+                        foreach (XmlElement bpfControl in bpfControls)
+                        {
+                            var fieldName = bpfControl.Attributes["datafieldname"].Value;
+                            var relationship = bpfControl.Attributes["relationship"]?.Value;
+
+                            Guid controlId = Guid.NewGuid();
+                            bool pcfAttached = false;
+                            if (bpfControl.Attributes["uniqueid"] != null)
+                            {
+                                controlId = new Guid(bpfControl.Attributes["uniqueid"]?.Value);
+                                pcfAttached = true;
+                            }
+                                
+
+                            if (relationship != null && relationship != $"bpf_{bpfPrimaryEntityLogicalName}_{bpfEntityLogicalName}")
+                            {
+                                fieldName = fieldName + " (from another entity)";
+                            }
+
+                            var displayName = attributesMetadata.FirstOrDefault(x => x.LogicalName == fieldName)?.DisplayName?.UserLocalizedLabel?.Label;
+                            var control = new BpfFieldControl(this, fieldName, displayName, controlId, pcfAttached);
+                            control.Dock = DockStyle.Top;
+
+                            controls.Add(control);
+                            bpfFieldControls.Add(control);
+                        }
+
+                        i++;
+                    }
+
+                    controls.Reverse();
+                    panel1.Controls.AddRange(controls.ToArray());
+
+                    pcfBpfFormList = this.controllerManager.xmlManager.getExistingPCFDetails(xmlBPFDoc, bpfFieldControls).ToList();
+
                     
-                    controls.Add(new BpfFieldControl(this, fieldName, controlId) { Dock = DockStyle.Top });
-                    bpfFieldControls.Add(control);
-                }
-
-                i++;
-            }
-
-            controls.Reverse();
-            panel1.Controls.AddRange(controls.ToArray());
-
-            attributesMetadata = this.controllerManager.dataManager.getEntityAttributesMetadata(bpfPrimaryEntityLogicalName);
-            pcfBpfFormList = this.controllerManager.xmlManager.getExistingPCFDetails(xmlBPFDoc, bpfFieldControls.Select(x => x.name).ToList());
+                },
+                ProgressChanged = e => { SetWorkingMessage(e.UserState.ToString()); }
+            });
         }
 
-        public void reloadPanel()
+        private void btnUpdatePublish_Click(object sender, EventArgs evt)
         {
-            panel1.Refresh();
-            panel1.Invalidate();
+            var targetEntity = cbBPFEntitiesList.SelectedItem.ToString();
+            var generatedXml = this.controllerManager.xmlManager.generateBpfFormXml(pcfBpfFormList, xmlBPFDoc);
+            txbModifiedFormXml.Text = generatedXml;
+
+            WorkAsync(new WorkAsyncInfo
+            {
+                Message = "Updating and Publishing the BPF Form..",
+                Work = (bw, e) =>
+                {
+                    this.controllerManager.dataManager.updatePublishForm(bpfForm.Id, txbModifiedFormXml.Text, targetEntity);
+                },
+                PostWorkCallBack = e =>
+                {
+                    if (e.Error != null)
+                    {
+                        // this.log.LogData(EventType.Exception, LogAction.UsersLoaded, e.Error);
+                        MessageBox.Show(this, e.Error.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    MessageBox.Show("The BPF Form was successfully updated.", "BPF Form Updated !", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                },
+                ProgressChanged = e => { SetWorkingMessage(e.UserState.ToString()); }
+            });
+
+            
         }
 
-        private void btnUpdatePublish_Click(object sender, EventArgs e)
-        {
-            txbModifiedFormXml.Text = this.controllerManager.xmlManager.generateBpfFormXml(pcfBpfFormList, xmlBPFDoc);
-            this.controllerManager.dataManager.updatePublishForm(bpfForm.Id, txbModifiedFormXml.Text, cbBPFEntitiesList.SelectedItem.ToString());
-        }
-
-
-        public void setPossiblePCf(string field)
+        public void setPossiblePCf(string field, Guid id)
         {
             resetPossiblePCF();
 
-            var fieldDefinition = attributesMetadata.First(x => x.LogicalName == field);
-            var searchType = getTypeMapping(fieldDefinition.AttributeType.Value.ToString());
-            var searchTypes = searchType.Split(';');
-            var potentialPCFs = pcfList.Where(x => x.GetAttributeValue<string>("compatibledatatypes") != "" && x.GetAttributeValue<string>("compatibledatatypes").Split(',').Any(y => searchTypes.Contains(y)));
+            var searchType = getTypeMapping(field);
+            var potentialPCFs = pcfList.Where(x => x.GetAttributeValue<string>("compatibledatatypes") != "" && x.GetAttributeValue<string>("compatibledatatypes").Split(',').Contains(searchType));
             cbPossiblePCFs.Items.AddRange(potentialPCFs.Select(x => x.GetAttributeValue<string>("name")).OrderBy(y => y).ToArray());
 
             fieldToAttachPCF = field;
+            fieldIdToAttachPCF = id;
             cbPossiblePCFs.Enabled = true;
+
+            panelRight.Visible = true;
+            cbPossiblePCFs.Focus();
+        }
+
+        public void setAddPcf(string field, Guid id)
+        {
+            actionInProgress = actions.add;
+            panelParams.Controls.Clear();
+            setPossiblePCf(field, id);
         }
 
         public void setExistingPCFDetails(string field, Guid id)
         {
+            actionInProgress = actions.modify;
+
             resetPossiblePCF();
 
-            tbControlDescription.Text = "";
-            setPossiblePCf(field);
+            setPossiblePCf(field, id);
 
-            pcfEditing = pcfBpfFormList.First(x => x.id == id);
+            pcfEditing = PCFDetails.Clone(pcfBpfFormList.First(x => x.id == id));
+            //pcfEditing = pcfBpfFormList.First(x => x.id == id).Clone();
 
             // Auto select the dropdown list here & disable it
             cbPossiblePCFs.Enabled = false;
             cbPossiblePCFs.SelectedText = pcfEditing.name;
-            
-            dgvPCFParamsSource.DataSource = pcfEditing.parameters;
+
+            loadParamToPanel(pcfEditing.parameters);
         }
 
         public void setDeletePCFDetails(Guid id)
         {
+            actionInProgress = actions.delete;
+
             // we reset the control in the list
             var pcfToDelete = pcfBpfFormList.FirstOrDefault(x => x.id == id);
             pcfToDelete.action = actions.delete;
@@ -215,7 +303,8 @@ namespace Carfup.XTBPlugins.PCF2BPF
             pcfBpfFormList.Add(new PCFDetails()
             {
                 attachedField = pcfToDelete.attachedField,
-                action = actions.none
+                action = actions.none,
+                id = id
             });
 
             this.controllerManager.xmlManager.generateBpfFormXml(pcfBpfFormList, xmlBPFDoc);
@@ -227,89 +316,147 @@ namespace Carfup.XTBPlugins.PCF2BPF
             cbPossiblePCFs.Items.Clear();
             cbPossiblePCFs.SelectedIndex = -1;
             cbPossiblePCFs.ResetText();
-            dgvPCFParamsSource.DataSource = null;
         }
 
-        public string getTypeMapping(string typeValue)
+        public string getTypeMapping(string field, bool fromAttrToPcf = true)
         {
-            switch (typeValue)
+            var attributeMetadata = attributesMetadata.FirstOrDefault(x => x.LogicalName == field);
+
+            if(attributeMetadata == null)
             {
-                case "Money": return "Currency";
-                case "Integer": return "Whole.None"; 
-                case "Lookup": return "Lookup.Simple";
-                case "DateTime": return "DateAndTime.DateAndTime";
-                case "Decimal": return "Decimal";
-                case "BigInt": return "Whole.None";
-                case "Boolean": return "TwoOptions";
-                case "Picklist": return "OptionSet";
-                case "Memo": return "Multiple;SingleLine.TextArea";
-                default: return "SingleLine.Text;SingleLine.Email;SingleLine.URL";
+                MessageBox.Show(this, $"The metadata for attribute {field} couldn't not be found", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return "";
             }
+
+            var typeToLookFor = attributeMetadata.AttributeType.Value.ToString();
+            if (attributeMetadata.GetType() == typeof(StringAttributeMetadata))
+            {
+               typeToLookFor = ((StringAttributeMetadata)attributeMetadata).FormatName.Value;
+            }
+            else if (attributeMetadata.GetType() == typeof(MemoAttributeMetadata))
+            {
+                typeToLookFor = ((MemoAttributeMetadata)attributeMetadata).FormatName.Value;
+            }
+            else if (attributeMetadata.GetType() == typeof(IntegerAttributeMetadata))
+            {
+                typeToLookFor = ((IntegerAttributeMetadata)attributeMetadata).Format.Value.ToString();
+            }
+            else if (attributeMetadata.GetType() == typeof(DateTimeAttributeMetadata))
+            {
+                typeToLookFor = ((DateTimeAttributeMetadata)attributeMetadata).Format.Value.ToString();
+            }
+
+            if(fromAttrToPcf)
+                return mappingType.FirstOrDefault(x => x.Key == typeToLookFor).Value;
+            else
+                return mappingType.FirstOrDefault(x => x.Value == typeToLookFor).Key;
         }
 
         private void cbPossiblePCFs_SelectedIndexChanged(object sender, EventArgs e)
         {
-            tbControlDescription.Text = "";
-
             var selectedPCF = cbPossiblePCFs.SelectedItem.ToString();
-            pcfEditing = pcfAvailableDetailsList.First(x => x.name == selectedPCF);
+            //var tmpPcfEditing = PCFDetails.Clone(pcfAvailableDetailsList.First(x => x.name == selectedPCF));
+
+            // reset id & values
+         /*   tmpPcfEditing.parameters.ForEach(c => c.value = null);
+            tmpPcfEditing.parameters.ForEach(c => c.isStatic = false);
+            tmpPcfEditing.id = null;
+            tmpPcfEditing.attachedField = fieldToAttachPCF;*/
+
+            pcfEditing = PCFDetails.Clone(pcfAvailableDetailsList.First(x => x.name == selectedPCF));
 
             pcfEditing.parameters.First().value = fieldToAttachPCF;
             pcfEditing.attachedField = fieldToAttachPCF;
+            pcfEditing.id = fieldIdToAttachPCF;
 
-            dgvPCFParamsSource.DataSource = pcfEditing.parameters;
-
-            for (int i = 0; i < dgvPCFParams.Columns.Count - 1; i++)
-                dgvPCFParams.Columns[i].AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells;
+            loadParamToPanel(pcfEditing.parameters);
         }
 
-        private void dgvPCFParams_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        private void loadParamToPanel(List<PCFParameters> parameters)
         {
-            if (e.RowIndex == -1)
-                return;
+            panelParams.Controls.Clear();
+            var controls = new List<UserControl>();
 
-        }
-
-        private void btnApplyChanges_Click(object sender, EventArgs e)
-        {
-            var requiredFieldsEmpty = pcfEditing.parameters.Any(x => x.required && x.value == null);
-
-            if (requiredFieldsEmpty)
+            int i = 0;
+            foreach (var param in parameters)
             {
-                MessageBox.Show("One or more required fields are empty, please fill them.");
-                return;
+                controls.Add(new PcfControlParameter(this, param, i == 0) { Dock = DockStyle.Top });
+                i++;
             }
-            //pcfBPFFormList.First(x => x.id == pcfEditing.id).parameters = pcfEditing.parameters;
-            pcfEditing.action = actions.modify;
-
-            var element = pcfBpfFormList.First(x => x.attachedField == pcfEditing.parameters.First().value.ToString());
-            var index = pcfBpfFormList.IndexOf(element);
-            pcfBpfFormList[index] = pcfEditing;
-
-            this.controllerManager.xmlManager.generateBpfFormXml(pcfBpfFormList, xmlBPFDoc);
+            controls.Reverse();
+               
+            panelParams.Controls.AddRange(controls.ToArray());
         }
 
-        private void btnAddControl_Click(object sender, EventArgs e)
+        private void btnAddApplyControl_Click(object sender, EventArgs e)
         {
-            var requiredFieldsEmpty = pcfEditing.parameters.Any(x => x.required && x.value == null);
+            var requiredFieldsEmpty = pcfEditing?.parameters.Any(x => x.required && (x.value == null || x.value == ""));
 
-            if (requiredFieldsEmpty)
+            if (requiredFieldsEmpty.Value)
             {
                 MessageBox.Show("One or more required fields are empty, please fill them.");
                 return;
             }
 
-            pcfEditing.action = actions.add;
+            if (actionInProgress == actions.modify)
+            {
+                pcfEditing.action = actions.modify;
 
-            var element = pcfBpfFormList.First(x => x.attachedField == pcfEditing.parameters.First().value.ToString());
-            var index = pcfBpfFormList.IndexOf(element);
-            pcfBpfFormList[index] = pcfEditing;
+                foreach(var param in pcfEditing.parameters)
+                {
+                    if (param.complexTypes?.Length > 0)
+                        param.ofType = param.complexTypes.First();
+                }
 
-            this.controllerManager.xmlManager.generateBpfFormXml(pcfBpfFormList, xmlBPFDoc);
+                var element = pcfBpfFormList.First(x => /*x.attachedField == pcfEditing.parameters.First().value.ToString() &&*/ x.id == pcfEditing.id);
+                var index = pcfBpfFormList.IndexOf(element);
+                pcfBpfFormList[index] = pcfEditing;
+
+                this.controllerManager.xmlManager.generateBpfFormXml(pcfBpfFormList, xmlBPFDoc);
+
+                panelRight.Visible = false;
+            } 
+            else if (actionInProgress == actions.add)
+            {
+                pcfEditing.action = actions.add;
+                var element = pcfBpfFormList.First(x => x.id == pcfEditing.id);
+                var index = pcfBpfFormList.IndexOf(element);
+                pcfBpfFormList[index] = pcfEditing;
+
+                var controlPosition = bpfFieldControls.IndexOf(bpfFieldControls.First(x => x.id == pcfEditing.id));
+
+                this.controllerManager.xmlManager.generateBpfFormXml(pcfBpfFormList, xmlBPFDoc, controlPosition);
+
+                panelRight.Visible = false;
+            }
+
+            panelParams.Controls.Clear();
+        }
+
+        public void loadMappingTypes()
+        {
+            mappingType.Add("Text", "SingleLine.Text");
+            mappingType.Add("Money", "Currency");
+            mappingType.Add("DateOnly", "DateAndTime.DateOnly");
+            mappingType.Add("DateAndTime", "DateAndTime.DateAndTime");
+            mappingType.Add("Lookup", "Lookup.Simple");
+            mappingType.Add("Picklist", "OptionSet");
+            mappingType.Add("BigInt", "Whole.None");
+            mappingType.Add("Decimal", "Decimal");
+            mappingType.Add("Email", "SingleLine.Email");
+            mappingType.Add("Url", "SingleLine.URL");
+            mappingType.Add("Phone", "SingleLine.Phone");
+            mappingType.Add("Boolean", "TwoOptions");
+            mappingType.Add("TextArea", "Multiple");
+            mappingType.Add("Memo", "SingleLine.TextArea");
+            mappingType.Add("TickerSymbol", "SingleLine.Ticker");
+            mappingType.Add("MultiSelectPickList", "MultiSelectOptionSet");
+            mappingType.Add("Double", "FP");
         }
     }
 
-    public class PCFDetails
+    [Serializable]
+    public class PCFDetails 
     {
         public string name;
         public string manifest;
@@ -319,8 +466,26 @@ namespace Carfup.XTBPlugins.PCF2BPF
         public List<PCFParameters> parameters;
         public List<PCFTypeGroups> typeGroup;
         public actions action = actions.none;
+
+        public static T Clone<T>(T source)
+        {
+            if (!typeof(T).IsSerializable)
+            {
+                throw new ArgumentException("The type must be serializable.", nameof(source));
+            }
+
+            // Don't serialize a null object, simply return the default for that object
+            if (ReferenceEquals(source, null)) return default;
+
+            Stream stream = new MemoryStream();
+            IFormatter formatter = new BinaryFormatter();
+            formatter.Serialize(stream, source);
+            stream.Seek(0, SeekOrigin.Begin);
+            return (T)formatter.Deserialize(stream);
+        }
     }
 
+    [Serializable]
     public class PCFParameters
     {
         [DisplayName("Param Name")]
@@ -335,17 +500,21 @@ namespace Carfup.XTBPlugins.PCF2BPF
         public bool required { get; set; }
 
         [DisplayName("Param Type")]
-        public string ofType { get; set; }
+        public string ofType { get; set; } = null;
 
-        public string ofTypeGroup;
+        public string ofTypeGroup = null;
 
          [DisplayName("Param Value")]
         public object value { get; set; }
 
         [DisplayName("Is Static ?")]
         public bool isStatic { get; set; }
+
+        public string[] complexValues { get; set; }
+        public string[] complexTypes { get; set; }
     }
 
+    [Serializable]
     public class PCFTypeGroups
     {
         public string name;
