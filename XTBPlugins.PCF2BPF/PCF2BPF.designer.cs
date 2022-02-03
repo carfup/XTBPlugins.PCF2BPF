@@ -43,7 +43,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.cbPossiblePCFs = new System.Windows.Forms.ComboBox();
             this.panel2 = new System.Windows.Forms.Panel();
             this.btnUpdatePublish = new System.Windows.Forms.Button();
-            this.panel1 = new System.Windows.Forms.Panel();
+            this.panelStagesFields = new System.Windows.Forms.Panel();
             this.cbBPFEntitiesList = new System.Windows.Forms.ComboBox();
             this.label7 = new System.Windows.Forms.Label();
             this.btnLoadEntities = new System.Windows.Forms.Button();
@@ -184,7 +184,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             // panel2
             // 
             this.panel2.Controls.Add(this.btnUpdatePublish);
-            this.panel2.Controls.Add(this.panel1);
+            this.panel2.Controls.Add(this.panelStagesFields);
             this.panel2.Controls.Add(this.cbBPFEntitiesList);
             this.panel2.Controls.Add(this.label7);
             this.panel2.Controls.Add(this.btnLoadEntities);
@@ -205,15 +205,15 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.btnUpdatePublish.UseVisualStyleBackColor = true;
             this.btnUpdatePublish.Click += new System.EventHandler(this.btnUpdatePublish_Click);
             // 
-            // panel1
+            // panelStagesFields
             // 
-            this.panel1.AutoScroll = true;
-            this.panel1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.panel1.Location = new System.Drawing.Point(0, 69);
-            this.panel1.Name = "panel1";
-            this.panel1.Padding = new System.Windows.Forms.Padding(0, 5, 0, 0);
-            this.panel1.Size = new System.Drawing.Size(413, 554);
-            this.panel1.TabIndex = 34;
+            this.panelStagesFields.AutoScroll = true;
+            this.panelStagesFields.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.panelStagesFields.Location = new System.Drawing.Point(0, 69);
+            this.panelStagesFields.Name = "panelStagesFields";
+            this.panelStagesFields.Padding = new System.Windows.Forms.Padding(0, 5, 0, 0);
+            this.panelStagesFields.Size = new System.Drawing.Size(413, 554);
+            this.panelStagesFields.TabIndex = 34;
             // 
             // cbBPFEntitiesList
             // 
@@ -336,7 +336,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
         private System.Windows.Forms.TabPage tabPage1;
         private System.Windows.Forms.Panel panel2;
         private System.Windows.Forms.Button btnUpdatePublish;
-        private System.Windows.Forms.Panel panel1;
+        private System.Windows.Forms.Panel panelStagesFields;
         private System.Windows.Forms.ComboBox cbBPFEntitiesList;
         private System.Windows.Forms.Label label7;
         private System.Windows.Forms.Button btnLoadEntities;

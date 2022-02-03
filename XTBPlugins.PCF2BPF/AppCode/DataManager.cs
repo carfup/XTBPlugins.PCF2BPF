@@ -62,18 +62,25 @@ namespace Carfup.XTBPlugins.AppCode
 
         public Entity retrieveBpfForm(string entity)
         {
-            return this.connection.serviceClient.RetrieveMultiple(new QueryExpression()
+            try
             {
-                EntityName = "systemform",
-                ColumnSet = new ColumnSet("name", "formxml", "objecttypecode"),
-                Criteria =
+                return this.connection.serviceClient.RetrieveMultiple(new QueryExpression()
+                {
+                    EntityName = "systemform",
+                    ColumnSet = new ColumnSet("name", "formxml", "objecttypecode"),
+                    Criteria =
                 {
                     Conditions =
                     {
                         new ConditionExpression("objecttypecode", ConditionOperator.Like, entity),
                     }
                 }
-            }).Entities.FirstOrDefault();
+                }).Entities.FirstOrDefault();
+            }
+            catch (Exception)
+            {
+                return null;
+            }
         }
 
         public List<AttributeMetadata> getEntityAttributesMetadata(string entity)

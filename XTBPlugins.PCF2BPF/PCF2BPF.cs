@@ -142,6 +142,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             var bpfEntityLogicalName = selectedBPFEntity.GetAttributeValue<string>("uniquename");
 
             panelRight.Visible = false;
+            panelStagesFields.Controls.Clear();
 
             WorkAsync(new WorkAsyncInfo
             {
@@ -150,8 +151,15 @@ namespace Carfup.XTBPlugins.PCF2BPF
                 {
                     bpfForm = this.controllerManager.dataManager.retrieveBpfForm(bpfEntityLogicalName);
 
-                    bw.ReportProgress(0, "Loading related metadata...");
-                    attributesMetadata = this.controllerManager.dataManager.getEntityAttributesMetadata(bpfPrimaryEntityLogicalName);
+                    if (bpfForm == null || bpfForm.GetAttributeValue<string>("formxml").Contains("<hiddencontrols>"))
+                    {
+                        e.Result = "This BPF is not yet supported. We do hope it will be the case in a near future.";
+                    } 
+                    else
+                    {
+                        bw.ReportProgress(0, "Loading related metadata...");
+                        attributesMetadata = this.controllerManager.dataManager.getEntityAttributesMetadata(bpfPrimaryEntityLogicalName);
+                    }                    
                 },
                 PostWorkCallBack = e =>
                 {
@@ -161,13 +169,19 @@ namespace Carfup.XTBPlugins.PCF2BPF
                         MessageBox.Show(this, e.Error.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
+                    
+                    if(e.Result != null)
+                    {
+                        MessageBox.Show(this, e.Result.ToString(), "BPF not supported", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
 
                     var bpfFormXml = bpfForm.GetAttributeValue<string>("formxml");
                     txbFormXml.Text = bpfFormXml;
                     xmlBPFDoc.LoadXml(bpfFormXml);
 
                     bpfFieldControls.Clear();
-                    panel1.Controls.Clear();
+                    panelStagesFields.Controls.Clear();
 
                     var controls = new List<UserControl>();
 
@@ -211,7 +225,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
                     }
 
                     controls.Reverse();
-                    panel1.Controls.AddRange(controls.ToArray());
+                    panelStagesFields.Controls.AddRange(controls.ToArray());
 
                     pcfBpfFormList = this.controllerManager.xmlManager.getExistingPCFDetails(xmlBPFDoc, bpfFieldControls).ToList();
 
