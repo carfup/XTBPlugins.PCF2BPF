@@ -308,7 +308,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
                     int i = 1;
                     foreach (XmlElement bpfTab in bpfTabs)
                     {
-                        controls.Add(new BpfStageControl($"Stage {i}") { Dock = DockStyle.Top });
+                        controls.Add(new BpfStageControl(bpfTab.SelectSingleNode("labels/label/@description")?.Value) { Dock = DockStyle.Top });
 
                         // Getting the fields avaiable on BPF form
                         var bpfControls = bpfTab.SelectNodes(".//control");
