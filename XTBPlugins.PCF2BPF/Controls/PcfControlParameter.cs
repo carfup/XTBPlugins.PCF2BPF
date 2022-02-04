@@ -2,24 +2,20 @@
 using Microsoft.Xrm.Sdk.Metadata;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Data;
-using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Carfup.XTBPlugins.Controls
 {
     public partial class PcfControlParameter : UserControl
     {
-        PCFParameters param;
-        PCF2BPF.PCF2BPF pcf2bpf;
+        private List<string> fields = new List<string>();
         private bool isPrimaryField = false;
-        List<string> fields = new List<string>();
+        private PCFParameters param;
+        private PCF2BPF.PCF2BPF pcf2bpf;
 
-        public PcfControlParameter(PCF2BPF.PCF2BPF pcf2bpf, PCFParameters param, bool isPrimaryField)
+        public PcfControlParameter(PCF2BPF.PCF2BPF pcf2bpf, PCFDetails pcf, PCFParameters param, bool isPrimaryField)
         {
             InitializeComponent();
 
@@ -27,14 +23,15 @@ namespace Carfup.XTBPlugins.Controls
             this.pcf2bpf = pcf2bpf;
             this.isPrimaryField = isPrimaryField;
 
-            lblParamName.Text = $"{param.name} *";
+            var name = pcf.resx.FirstOrDefault()?.GetText(param.name) ?? param.name;
+            var description = pcf.resx.FirstOrDefault()?.GetText(param.description) ?? param.description;
+
+            lblParamName.Text = $"{name} *";
             lblParamUsage.Text = param.usage;
             ckbRequired.Checked = param.required;
             lblParamType.Text = param.ofType ?? param.ofTypeGroup;
             tbValue.Text = param.value?.ToString();
             ckbStatic.Checked = param.isStatic;
-
-            
 
             var descToolTip = new ToolTip()
             {
@@ -43,7 +40,7 @@ namespace Carfup.XTBPlugins.Controls
                 ShowAlways = true,
                 ToolTipTitle = "Description"
             };
-            descToolTip.SetToolTip(lblParamName, param.description);
+            descToolTip.SetToolTip(lblParamName, description);
 
             if (param.complexTypes?.Length > 0)
             {
@@ -63,11 +60,6 @@ namespace Carfup.XTBPlugins.Controls
             // Manage visibility
             tbValue.Visible = !cbValue.Visible;
             tbValue.Enabled = !this.isPrimaryField;
-        }
-
-        private void tbValue_TextChanged(object sender, EventArgs e)
-        {
-            this.param.value = tbValue.Text;
         }
 
         private void cbValue_SelectedIndexChanged(object sender, EventArgs e)
@@ -99,7 +91,7 @@ namespace Carfup.XTBPlugins.Controls
             else if (!ckbStatic.Checked && !this.isPrimaryField)
             {
                 cbValue.Items.Clear();
-                
+
                 if (this.fields.Count == 0)
                 {
                     var typeToSearch = pcf2bpf.mappingType.Where(x => param.complexTypes.Contains(x.Value) || param.ofType == x.Value).Select(y => y.Key).ToList();
@@ -123,6 +115,11 @@ namespace Carfup.XTBPlugins.Controls
             }
 
             this.param.isStatic = ckbStatic.Checked;
+        }
+
+        private void tbValue_TextChanged(object sender, EventArgs e)
+        {
+            this.param.value = tbValue.Text;
         }
     }
 }

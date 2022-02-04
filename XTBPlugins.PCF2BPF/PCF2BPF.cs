@@ -3,14 +3,15 @@ using Carfup.XTBPlugins.Controls;
 using McTools.Xrm.Connection;
 using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Metadata;
+using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
+using System.Resources;
 using System.Windows.Forms;
 using System.Xml;
 using XrmToolBox.Extensibility;
@@ -136,14 +137,14 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
             setPossiblePCf(field, id);
 
-            pcfEditing = PCFDetails.Clone(pcfBpfFormList.First(x => x.id == id));
+            pcfEditing = pcfBpfFormList.First(x => x.id == id).Clone();
             //pcfEditing = pcfBpfFormList.First(x => x.id == id).Clone();
 
             // Auto select the dropdown list here & disable it
             cbPossiblePCFs.Enabled = false;
             cbPossiblePCFs.SelectedText = pcfEditing.name;
 
-            loadParamToPanel(pcfEditing.parameters);
+            loadParamToPanel(pcfEditing);
         }
 
         public void setPossiblePCf(string field, Guid id)
@@ -364,24 +365,26 @@ namespace Carfup.XTBPlugins.PCF2BPF
                tmpPcfEditing.id = null;
                tmpPcfEditing.attachedField = fieldToAttachPCF;*/
 
-            pcfEditing = PCFDetails.Clone(pcfAvailableDetailsList.First(x => x.name == selectedPCF));
+            pcfAvailableDetailsList.FirstOrDefault(x => x.name == selectedPCF)?.resx?.FirstOrDefault()?.Load(Service);
+
+            pcfEditing = pcfAvailableDetailsList.First(x => x.name == selectedPCF).Clone();
 
             pcfEditing.parameters.First().value = fieldToAttachPCF;
             pcfEditing.attachedField = fieldToAttachPCF;
             pcfEditing.id = fieldIdToAttachPCF;
 
-            loadParamToPanel(pcfEditing.parameters);
+            loadParamToPanel(pcfEditing);
         }
 
-        private void loadParamToPanel(List<PCFParameters> parameters)
+        private void loadParamToPanel(PCFDetails pcf)
         {
             panelParams.Controls.Clear();
             var controls = new List<UserControl>();
 
             int i = 0;
-            foreach (var param in parameters)
+            foreach (var param in pcf.parameters)
             {
-                controls.Add(new PcfControlParameter(this, param, i == 0) { Dock = DockStyle.Top });
+                controls.Add(new PcfControlParameter(this, pcf, param, i == 0) { Dock = DockStyle.Top });
                 i++;
             }
             controls.Reverse();
@@ -482,23 +485,40 @@ namespace Carfup.XTBPlugins.PCF2BPF
         public string manifest;
         public string name;
         public List<PCFParameters> parameters;
+
         public List<PCFTypeGroups> typeGroup;
 
-        public static T Clone<T>(T source)
+        internal List<PCFResx> resx;
+
+        public string customControlName
         {
-            if (!typeof(T).IsSerializable)
+            get
             {
-                throw new ArgumentException("The type must be serializable.", nameof(source));
+                var xmlDoc = new XmlDocument();
+                xmlDoc.LoadXml(manifest);
+
+                return $"{xmlDoc.SelectSingleNode("//control").Attributes["namespace"].Value}.{xmlDoc.SelectSingleNode("//control").Attributes["constructor"].Value}";
             }
+        }
 
-            // Don't serialize a null object, simply return the default for that object
-            if (ReferenceEquals(source, null)) return default;
+        public PCFDetails Clone()
+        {
+            return new PCFDetails
+            {
+                action = action,
+                attachedField = attachedField,
+                controlDescription = controlDescription,
+                manifest = manifest,
+                name = name,
+                parameters = parameters.ToList(),
+                typeGroup = typeGroup.ToList(),
+                resx = resx.ToList()
+            };
+        }
 
-            Stream stream = new MemoryStream();
-            IFormatter formatter = new BinaryFormatter();
-            formatter.Serialize(stream, source);
-            stream.Seek(0, SeekOrigin.Begin);
-            return (T)formatter.Deserialize(stream);
+        public override string ToString()
+        {
+            return resx.FirstOrDefault()?.GetText(name) ?? name;
         }
     }
 
@@ -530,6 +550,68 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
         [DisplayName("Param Value")]
         public object value { get; set; }
+    }
+
+    [Serializable]
+    public class PCFResx
+    {
+        private static List<Entity> _resources = new List<Entity>();
+        private string _constructor;
+        private int _lcid;
+        private string _publisher;
+        private ResXResourceSet resxSet;
+
+        public PCFResx(string path, string publisher, string constructor)
+        {
+            _publisher = publisher;
+            _constructor = constructor;
+            Path = path;
+
+            var languagePart = path.Split('.')[1];
+
+            if (!int.TryParse(languagePart, out _lcid))
+            {
+                _lcid = new CultureInfo(languagePart).LCID;
+            }
+        }
+
+        public bool IsLoaded { get; private set; }
+        public int Lcid => _lcid;
+        public string Path { get; set; }
+        public string WebresourceName => $"cc_{_publisher}.{_constructor}/{Path}";
+
+        public string GetText(string key)
+        {
+            return resxSet?.GetString(key) ?? key;
+        }
+
+        public void Load(IOrganizationService service)
+        {
+            if (resxSet == null)
+            {
+                var resource = service.RetrieveMultiple(new QueryExpression("webresource")
+                {
+                    ColumnSet = new ColumnSet("name", "content"),
+                    Criteria = new FilterExpression
+                    {
+                        Conditions =
+                    {
+                        new ConditionExpression("name", ConditionOperator.Equal, WebresourceName)
+                    }
+                    }
+                }).Entities.FirstOrDefault();
+
+                if (resource != null)
+                {
+                    try
+                    {
+                        resxSet = new ResXResourceSet(new MemoryStream(Convert.FromBase64String(resource.GetAttributeValue<string>("content"))));
+                        IsLoaded = true;
+                    }
+                    catch { }
+                }
+            }
+        }
     }
 
     [Serializable]

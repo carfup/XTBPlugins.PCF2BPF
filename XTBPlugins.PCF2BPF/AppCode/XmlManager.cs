@@ -4,8 +4,6 @@ using Microsoft.Xrm.Sdk;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Xml;
 
 namespace Carfup.XTBPlugins.AppCode
@@ -18,6 +16,7 @@ namespace Carfup.XTBPlugins.AppCode
         /// Crm web service
         /// </summary>
         private readonly ControllerManager connection = null;
+
         private PCF2BPF.PCF2BPF pcf2bpf = null;
 
         #endregion Variables
@@ -35,6 +34,99 @@ namespace Carfup.XTBPlugins.AppCode
         }
 
         #endregion Constructor
+
+        public string constructionControlDescription(PCFDetails pcfEditing, string fieldToAttachPCF)
+        {
+            var selectedPCF = pcfEditing.name;
+            var action = pcfEditing.action;
+            // pcfEditing.id = action == actions.add ? Guid.NewGuid() : pcfEditing.id;
+            var controlDescription = action == actions.add ?
+                "<controlDescription forControl=\"{" + pcfEditing.id + "}\"><customControl name=\"" + selectedPCF + "\" formFactor=\"2\"><parameters>" :
+                "<customControl name=\"" + selectedPCF + "\" formFactor=\"2\"><parameters>";
+
+            foreach (var param in pcfEditing.parameters)
+            {
+                if (param.usage == "bound")
+                    controlDescription += $"<{param.name}>{fieldToAttachPCF}</{param.name}>";
+                else
+                    controlDescription += $"<{param.name} static=\"{param.isStatic}\" type=\"{param.ofType}\">{param.value}</{param.name}>";
+            }
+
+            controlDescription += action == actions.add ? $"</parameters></customControl></controlDescription>" : $"</parameters></customControl>";
+
+            //bpfFieldControls.First(x => x.name == pcfEditing.parameters.First().value.ToString()).changeIdValue(uniqueGuid);
+
+            return controlDescription;
+        }
+
+        public string generateBpfFormXml(List<PCFDetails> pcfList, XmlDocument xmlBpf, int fieldPosition = 0)
+        {
+            foreach (var pcf in pcfList.Where(x => x.action != actions.none))
+            {
+                if (pcf.action == actions.add)
+                {
+                    // generate controldescription
+                    var controlDescriptions = $"{constructionControlDescription(pcf, pcf.attachedField)}";
+
+                    // mapping the ID of control to field
+                    var control = xmlBpf.SelectSingleNode($"//control[@datafieldname='{pcf.attachedField}']");
+
+                    if (fieldPosition != 0)
+                        control = xmlBpf.SelectNodes($"//control")[fieldPosition];
+
+                    XmlAttribute typeAttr = xmlBpf.CreateAttribute("uniqueid");
+                    typeAttr.Value = "{" + pcf.id.ToString() + "}";
+                    control.Attributes.Append(typeAttr);
+
+                    // appending the new definition to xml
+                    xmlBpf.InnerXml = xmlBpf.InnerXml.Contains("</controlDescriptions>") ?
+                            xmlBpf.InnerXml.Replace("</controlDescriptions>", $"{controlDescriptions}</controlDescriptions>") :
+                            xmlBpf.InnerXml.Replace("</form>", $"<controlDescriptions>{controlDescriptions}</controlDescriptions></form>");
+
+                    this.pcf2bpf.bpfFieldControls.First(x => x.id == pcf.id).changePcfAttachedValue(true);
+
+                    pcf.action = actions.none;
+                }
+                else if (pcf.action == actions.modify)
+                {
+                    var pcfControls = xmlBpf.SelectNodes("//controlDescription");
+                    int i = 0;
+                    foreach (XmlNode pcfControl in pcfControls.Cast<XmlNode>().ToList())
+                    {
+                        var param = pcfControl.SelectNodes("//customControl/parameters").Count > 0 ? pcfControl.SelectNodes("//customControl/parameters")[i].FirstChild.InnerText : null;
+                        if (param != null && param == pcf.attachedField)
+                        {
+                            pcfControl.InnerXml = constructionControlDescription(pcf, pcf.attachedField);
+                        }
+                        i++;
+                    }
+                    pcf.action = actions.none;
+                }
+                else if (pcf.action == actions.delete)
+                {
+                    // removing reference of the control on the fieldattribute
+                    var control = xmlBpf.SelectSingleNode("//control[@uniqueid='{" + pcf.id + "}']");
+
+                    if (control == null)
+                    {
+                        throw new Exception("Action Delete : control cant be found.");
+                    }
+
+                    control.Attributes.Remove(control.Attributes["uniqueid"]);
+
+                    // removing the related controlDescription
+                    var controlDescription = xmlBpf.SelectSingleNode("//controlDescription[@forControl='{" + pcf.id + "}']");
+                    var parentNode = controlDescription.ParentNode;
+                    if (controlDescription != null) { parentNode.RemoveChild(controlDescription); }
+
+                    this.pcf2bpf.bpfFieldControls.First(x => x.name == pcf.attachedField).changePcfAttachedValue();
+                }
+            }
+
+            pcfList.RemoveAll(x => x.action == actions.delete);
+
+            return xmlBpf.InnerXml;
+        }
 
         public List<PCFDetails> getExistingPCFDetails(XmlDocument xmlBpfDoc, List<BpfFieldControl> fields = null)
         {
@@ -116,15 +208,26 @@ namespace Carfup.XTBPlugins.AppCode
                             type = type.InnerText,
                         });
                 }
+                List<PCFResx> pcfResxes = new List<PCFResx>();
+
+                var resxes = xmlDocPCF.SelectNodes("//resx");
+                foreach (XmlNode resx in resxes)
+                {
+                    var pcfResx = new PCFResx(resx.Attributes["path"].Value,
+                        xmlDocPCF.SelectSingleNode("//control").Attributes["namespace"].Value,
+                        xmlDocPCF.SelectSingleNode("//control").Attributes["constructor"].Value);
+
+                    pcfResxes.Add(pcfResx);
+                }
 
                 List<PCFParameters> pcfParams = new List<PCFParameters>();
                 foreach (XmlNode prop in properties)
-                {   
+                {
                     var complexValues = new List<string>();
                     var complexTypes = new List<string>();
                     if (prop.Attributes["of-type"]?.Value == "Enum")
                     {
-                        complexValues = prop.ChildNodes.Cast<XmlNode>().Select(x => x.InnerText).ToList();
+                        complexValues = prop.ChildNodes.Cast<XmlNode>().Select(x => x.Attributes["name"].Value).ToList();
                     }
 
                     if (prop.Attributes["of-type-group"]?.Value != null)
@@ -134,7 +237,7 @@ namespace Carfup.XTBPlugins.AppCode
 
                     pcfParams.Add(new PCFParameters
                     {
-                        name = prop.Attributes["name"]?.Value,
+                        name = prop.Attributes["display-name-key"]?.Value,
                         description = prop.Attributes["description-key"]?.Value,
                         required = prop.Attributes["required"]?.Value == "true" ? true : false,
                         usage = prop.Attributes["usage"]?.Value,
@@ -152,104 +255,12 @@ namespace Carfup.XTBPlugins.AppCode
                     manifest = controlManifest,
                     parameters = pcfParams,
                     typeGroup = typeGroupValues,
+                    resx = pcfResxes,
                     id = null
                 });
             }
 
             return pcfAvailableDetailsList;
-        }
-
-        public string generateBpfFormXml(List<PCFDetails> pcfList, XmlDocument xmlBpf, int fieldPosition = 0)
-        {
-            foreach (var pcf in pcfList.Where(x => x.action != actions.none))
-            {
-                if(pcf.action == actions.add)
-                {
-                    // generate controldescription
-                    var controlDescriptions = $"{constructionControlDescription(pcf, pcf.attachedField)}";
-
-                    // mapping the ID of control to field
-                    var control = xmlBpf.SelectSingleNode($"//control[@datafieldname='{pcf.attachedField}']");
-
-                    if (fieldPosition != 0)
-                        control = xmlBpf.SelectNodes($"//control")[fieldPosition];
-
-                    XmlAttribute typeAttr = xmlBpf.CreateAttribute("uniqueid");
-                    typeAttr.Value = "{" + pcf.id.ToString() + "}";
-                    control.Attributes.Append(typeAttr);
-
-                    // appending the new definition to xml
-                    xmlBpf.InnerXml = xmlBpf.InnerXml.Contains("</controlDescriptions>") ?
-                            xmlBpf.InnerXml.Replace("</controlDescriptions>", $"{controlDescriptions}</controlDescriptions>") :
-                            xmlBpf.InnerXml.Replace("</form>", $"<controlDescriptions>{controlDescriptions}</controlDescriptions></form>");
-
-                    this.pcf2bpf.bpfFieldControls.First(x => x.id == pcf.id).changePcfAttachedValue(true);
-                    
-                    pcf.action = actions.none;
-                }
-                else if (pcf.action == actions.modify)
-                {
-                    var pcfControls = xmlBpf.SelectNodes("//controlDescription");
-                    int i = 0;
-                    foreach (XmlNode pcfControl in pcfControls.Cast<XmlNode>().ToList())
-                    {
-                        var param = pcfControl.SelectNodes("//customControl/parameters").Count > 0 ? pcfControl.SelectNodes("//customControl/parameters")[i].FirstChild.InnerText : null;
-                        if (param != null && param == pcf.attachedField)
-                        {
-                            pcfControl.InnerXml = constructionControlDescription(pcf, pcf.attachedField);
-                        }
-                        i++;
-                    }
-                    pcf.action = actions.none;
-                }
-                else if (pcf.action == actions.delete)
-                {
-                    // removing reference of the control on the fieldattribute
-                    var control = xmlBpf.SelectSingleNode("//control[@uniqueid='{"+pcf.id+"}']");
-
-                    if(control == null)
-                    {
-                        throw new Exception("Action Delete : control cant be found.");
-                    }
-
-                    control.Attributes.Remove(control.Attributes["uniqueid"]);
-
-                    // removing the related controlDescription
-                    var controlDescription = xmlBpf.SelectSingleNode("//controlDescription[@forControl='{"+pcf.id+"}']");
-                    var parentNode = controlDescription.ParentNode;
-                    if (controlDescription != null) { parentNode.RemoveChild(controlDescription); }
-
-                    this.pcf2bpf.bpfFieldControls.First(x => x.name == pcf.attachedField).changePcfAttachedValue();
-                }
-            }
-
-            pcfList.RemoveAll(x => x.action == actions.delete);
-
-            return xmlBpf.InnerXml;
-        }
-
-        public string constructionControlDescription(PCFDetails pcfEditing, string fieldToAttachPCF)
-        {
-            var selectedPCF = pcfEditing.name;
-            var action = pcfEditing.action;
-           // pcfEditing.id = action == actions.add ? Guid.NewGuid() : pcfEditing.id;
-            var controlDescription = action == actions.add ?
-                "<controlDescription forControl=\"{" + pcfEditing.id + "}\"><customControl name=\"" + selectedPCF + "\" formFactor=\"2\"><parameters>" :
-                "<customControl name=\"" + selectedPCF + "\" formFactor=\"2\"><parameters>";
-
-            foreach (var param in pcfEditing.parameters)
-            {
-                if (param.usage == "bound")
-                    controlDescription += $"<{param.name}>{fieldToAttachPCF}</{param.name}>";
-                else
-                    controlDescription += $"<{param.name} static=\"{param.isStatic}\" type=\"{param.ofType}\">{param.value}</{param.name}>";
-            }
-
-            controlDescription += action == actions.add ? $"</parameters></customControl></controlDescription>" : $"</parameters></customControl>";
-
-            //bpfFieldControls.First(x => x.name == pcfEditing.parameters.First().value.ToString()).changeIdValue(uniqueGuid);
-
-            return controlDescription;
         }
     }
 }
