@@ -323,7 +323,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
                             if (bpfControl.Attributes["uniqueid"] != null)
                             {
                                 controlId = new Guid(bpfControl.Attributes["uniqueid"]?.Value);
-                                pcfAttached = true;
+                                pcfAttached = xmlBPFDoc.SelectSingleNode($"//controlDescription[@forControl='{bpfControl.Attributes["uniqueid"]?.Value}']") != null;
                             }
 
                             if (relationship != null
