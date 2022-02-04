@@ -326,7 +326,9 @@ namespace Carfup.XTBPlugins.PCF2BPF
                                 pcfAttached = true;
                             }
 
-                            if (relationship != null && relationship != $"bpf_{bpfPrimaryEntityLogicalName}_{bpfEntityLogicalName}")
+                            if (relationship != null
+                                && relationship != $"bpf_{bpfPrimaryEntityLogicalName}_{bpfEntityLogicalName}"
+                                && relationship != $"lk_{bpfEntityLogicalName}_{bpfPrimaryEntityLogicalName}id")
                             {
                                 fieldName = fieldName + " (from another entity)";
                             }
