@@ -248,9 +248,17 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AppCode\BpfFieldControlActionEventArgs.cs" />
     <Compile Include="AppCode\ControllerManager.cs" />
     <Compile Include="AppCode\DataManager.cs" />
-    <Compile Include="AppCode\XmlManager.cs" />
+    <Compile Include="AppCode\Enums.cs" />
+    <Compile Include="AppCode\FormAttribute.cs" />
+    <Compile Include="AppCode\FormTab.cs" />
+    <Compile Include="AppCode\PCFDetails.cs" />
+    <Compile Include="AppCode\PCFEnumValue.cs" />
+    <Compile Include="AppCode\PCFParameter.cs" />
+    <Compile Include="AppCode\PCFResx.cs" />
+    <Compile Include="AppCode\PCFTypeGroups.cs" />
     <Compile Include="Controls\BpfFieldControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -269,6 +277,7 @@
     <Compile Include="Controls\PcfControlParameter.Designer.cs">
       <DependentUpon>PcfControlParameter.cs</DependentUpon>
     </Compile>
+    <Compile Include="AppCode\FormXml.cs" />
     <Compile Include="Plugin.cs" />
     <Compile Include="PCF2BPF.cs">
       <SubType>UserControl</SubType>

@@ -1,4 +1,5 @@
-﻿using Carfup.XTBPlugins.PCF2BPF;
+﻿using Carfup.XTBPlugins.AppCode;
+using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Metadata;
 using System;
 using System.Collections.Generic;
@@ -10,21 +11,27 @@ namespace Carfup.XTBPlugins.Controls
 {
     public partial class PcfControlParameter : UserControl
     {
+        private EntityMetadata emd;
         private List<string> fields = new List<string>();
         private bool isPrimaryField = false;
-        private PCFParameters param;
-        private PCF2BPF.PCF2BPF pcf2bpf;
+        private Dictionary<string, string> mappingType;
+        private PCFParameter param;
+        private PCFDetails pcf;
+        private IOrganizationService service;
 
-        public PcfControlParameter(PCF2BPF.PCF2BPF pcf2bpf, PCFDetails pcf, PCFParameters param, bool isPrimaryField)
+        public PcfControlParameter(IOrganizationService service, Dictionary<string, string> mappingType, PCFDetails pcf, PCFParameter param, EntityMetadata emd, bool isPrimaryField)
         {
             InitializeComponent();
 
+            this.service = service;
+            this.pcf = pcf;
+            this.mappingType = mappingType;
             this.param = param;
-            this.pcf2bpf = pcf2bpf;
+            this.emd = emd;
             this.isPrimaryField = isPrimaryField;
 
-            var name = pcf.resx.FirstOrDefault()?.GetText(param.name) ?? param.name;
-            var description = pcf.resx.FirstOrDefault()?.GetText(param.description) ?? param.description;
+            var name = pcf.Resxes.FirstOrDefault()?.GetText(param.displayname) ?? param.name;
+            var description = pcf.Resxes.FirstOrDefault()?.GetText(param.description) ?? param.description;
 
             lblParamName.Text = $"{name} *";
             lblParamUsage.Text = param.usage;
@@ -42,7 +49,7 @@ namespace Carfup.XTBPlugins.Controls
             };
             descToolTip.SetToolTip(lblParamName, description);
 
-            if (param.complexTypes?.Length > 0)
+            if (param.ComplexTypes?.Length > 0)
             {
                 lblParamType.Text = lblParamType.Text + " *";
                 var typeToolTip = new ToolTip()
@@ -52,7 +59,7 @@ namespace Carfup.XTBPlugins.Controls
                     ShowAlways = true,
                     ToolTipTitle = "Accepted Types"
                 };
-                typeToolTip.SetToolTip(lblParamType, string.Join(", ", param.complexTypes));
+                typeToolTip.SetToolTip(lblParamType, string.Join(", ", param.ComplexTypes));
             }
 
             handleStaticDisplay();
@@ -64,7 +71,7 @@ namespace Carfup.XTBPlugins.Controls
 
         private void cbValue_SelectedIndexChanged(object sender, EventArgs e)
         {
-            this.param.value = cbValue.SelectedItem;
+            param.value = ((PCFEnumValue)cbValue.SelectedItem).Value;
         }
 
         private void ckbStatic_CheckedChanged(object sender, EventArgs e)
@@ -76,28 +83,30 @@ namespace Carfup.XTBPlugins.Controls
         {
             if (this.param.ofType == "Enum")
             {
+                param.ComplexValues.ForEach((a) => a.LoadLabel(pcf, service));
+
                 cbValue.Items.Clear();
-                cbValue.Items.AddRange(param.complexValues);
+                cbValue.Items.AddRange(param.ComplexValues.ToArray());
                 cbValue.Visible = true;
-                cbValue.SelectedIndex = cbValue.FindString(param.value?.ToString());
+                cbValue.SelectedIndex = cbValue.FindString(param.ComplexValues.FirstOrDefault(cv => cv.Value == param.value?.ToString())?.Label ?? param.value?.ToString());
                 ckbStatic.Enabled = false;
                 ckbStatic.Checked = true;
             }
-            else if (ckbStatic.Checked && !this.isPrimaryField)
+            else if (ckbStatic.Checked && !isPrimaryField)
             {
                 cbValue.Visible = false;
                 tbValue.Visible = true;
             }
-            else if (!ckbStatic.Checked && !this.isPrimaryField)
+            else if (!ckbStatic.Checked && !isPrimaryField)
             {
                 cbValue.Items.Clear();
 
-                if (this.fields.Count == 0)
+                if (fields.Count == 0)
                 {
-                    var typeToSearch = pcf2bpf.mappingType.Where(x => param.complexTypes.Contains(x.Value) || param.ofType == x.Value).Select(y => y.Key).ToList();
+                    var typeToSearch = mappingType.Where(x => param.ComplexTypes.Contains(x.Value) || param.ofType == x.Value).Select(y => y.Key).ToList();
                     List<string> types = new List<string>();
 
-                    this.fields = pcf2bpf.attributesMetadata.Where(x =>
+                    fields = emd.Attributes.Where(x =>
                         (x.GetType() == typeof(StringAttributeMetadata) && typeToSearch.Contains(((StringAttributeMetadata)x)?.FormatName?.Value)) ||
                         (x.GetType() == typeof(MemoAttributeMetadata) && typeToSearch.Contains(((MemoAttributeMetadata)x)?.FormatName?.Value)) ||
                         (x.GetType() == typeof(IntegerAttributeMetadata) && typeToSearch.Contains(((IntegerAttributeMetadata)x)?.Format.Value.ToString())) ||
@@ -105,21 +114,25 @@ namespace Carfup.XTBPlugins.Controls
                         typeToSearch.Contains(x.AttributeType.ToString())).Select(x => x.LogicalName).OrderBy(z => z).ToList();
                 }
 
-                if (this.fields.Count() > 0)
+                if (fields.Count() > 0)
                 {
-                    cbValue.Items.AddRange(this.fields.ToArray());
+                    cbValue.Items.AddRange(fields.ToArray());
                     cbValue.SelectedIndex = cbValue.FindString(param.value?.ToString());
                     cbValue.Visible = true;
                     tbValue.Visible = false;
                 }
             }
+            else if (isPrimaryField)
+            {
+                tbValue.Text = param.value?.ToString();
+            }
 
-            this.param.isStatic = ckbStatic.Checked;
+            param.isStatic = ckbStatic.Checked;
         }
 
         private void tbValue_TextChanged(object sender, EventArgs e)
         {
-            this.param.value = tbValue.Text;
+            param.value = tbValue.Text;
         }
     }
 }

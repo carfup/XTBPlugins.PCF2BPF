@@ -1,13 +1,11 @@
-﻿using Microsoft.Crm.Sdk.Messages;
-using Microsoft.Xrm.Sdk;
+﻿using Microsoft.Xrm.Sdk;
 using Microsoft.Xrm.Sdk.Messages;
 using Microsoft.Xrm.Sdk.Metadata;
+using Microsoft.Xrm.Sdk.Metadata.Query;
 using Microsoft.Xrm.Sdk.Query;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Carfup.XTBPlugins.AppCode
 {
@@ -35,7 +33,7 @@ namespace Carfup.XTBPlugins.AppCode
 
         #endregion Constructor
 
-        public List<Entity> retrieveBPFEntities()
+        public List<Entity> RetrieveBPFEntities()
         {
             return this.connection.serviceClient.RetrieveMultiple(new QueryExpression()
             {
@@ -51,7 +49,7 @@ namespace Carfup.XTBPlugins.AppCode
             }).Entities.ToList();
         }
 
-        public List<Entity> retrievePcfList()
+        public List<Entity> RetrievePcfList()
         {
             return this.connection.serviceClient.RetrieveMultiple(new QueryExpression()
             {
@@ -60,53 +58,30 @@ namespace Carfup.XTBPlugins.AppCode
             }).Entities.ToList();
         }
 
-        public Entity retrieveBpfForm(string entity)
+        internal List<EntityMetadata> GetMetadata(IEnumerable<string> rels)
         {
-            try
+            var query = new EntityQueryExpression
             {
-                return this.connection.serviceClient.RetrieveMultiple(new QueryExpression()
+                Properties = new MetadataPropertiesExpression("DisplayName", "Attributes", "OneToManyRelationships"),
+                AttributeQuery = new AttributeQueryExpression
                 {
-                    EntityName = "systemform",
-                    ColumnSet = new ColumnSet("name", "formxml", "objecttypecode"),
-                    Criteria =
+                    Properties = new MetadataPropertiesExpression("DisplayName", "FormatName", "Format"),
+                },
+                RelationshipQuery = new RelationshipQueryExpression
                 {
-                    Conditions =
+                    Properties = new MetadataPropertiesExpression("SchemaName"),
+                    Criteria = new MetadataFilterExpression
                     {
-                        new ConditionExpression("objecttypecode", ConditionOperator.Like, entity),
+                        Conditions =
+                        {
+                             new MetadataConditionExpression("SchemaName", MetadataConditionOperator.In, rels.ToArray())
+                        }
                     }
                 }
-                }).Entities.FirstOrDefault();
-            }
-            catch (Exception)
-            {
-                return null;
-            }
-        }
-
-        public List<AttributeMetadata> getEntityAttributesMetadata(string entity)
-        {
-            RetrieveEntityRequest retrieveEntityAttributesRequest = new RetrieveEntityRequest
-            {
-                EntityFilters = EntityFilters.Attributes,
-                LogicalName = entity
             };
-            var metadata = (RetrieveEntityResponse)this.connection.serviceClient.Execute(retrieveEntityAttributesRequest);
-            return metadata.EntityMetadata.Attributes.ToList();
-        }
 
-        public void updatePublishForm(Guid formId, string formXml, string targetEntity)
-        {
-            var form = new Entity("systemform", formId)
-            {
-                ["formxml"] = formXml
-            };
-            this.connection.serviceClient.Update(form);
-
-            var paramXml = string.Format(" <importexportxml><entities><entity>{0}</entity></entities><nodes/><securityroles/><settings/><workflows/></importexportxml>", targetEntity);
-            this.connection.serviceClient.Execute(new PublishXmlRequest
-            {
-                ParameterXml = paramXml
-            });
+            var response = (RetrieveMetadataChangesResponse)this.connection.serviceClient.Execute(new RetrieveMetadataChangesRequest { Query = query });
+            return response.EntityMetadata.ToList();
         }
     }
 }
