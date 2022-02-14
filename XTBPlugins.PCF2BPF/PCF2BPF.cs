@@ -55,8 +55,12 @@ namespace Carfup.XTBPlugins.PCF2BPF
             SetPossiblePCf(attribute);
 
             // Auto select the dropdown list here & disable it
-            cbPossiblePCFs.Enabled = false;
+            
             cbPossiblePCFs.SelectedText = attribute.PcfConfiguration.Name;
+            cbPossiblePCFs.Enabled = false;
+
+            pcfEditing = bpfForm.Tabs.SelectMany(x => x.Attributes).FirstOrDefault(y => y.UniqueId == attribute.PcfConfiguration.Id)?.PcfConfiguration;
+            _currentAttribute = attribute;
 
             LoadParamToPanel(attribute.PcfConfiguration);
         }
@@ -219,9 +223,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
                         foreach (var attr in tab.Attributes)
                         {
-                            var pcfDefinition = pcfAvailableDetailsList.FirstOrDefault(x => x.Name == attr.CustomControlName);
-
-                            attr.Initialize(pcfDefinition);
+                            attr.Initialize(pcfAvailableDetailsList);
                             var bpfFieldCtrl = new BpfFieldControl(attr.ToString()) { Dock = DockStyle.Top };
                             bpfFieldCtrl.OnActionRequested += BpfFieldCtrl_OnActionRequested;
                             bpfFieldCtrl.Tag = attr;

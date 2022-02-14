@@ -30,7 +30,7 @@ namespace Carfup.XTBPlugins.Controls
             this.emd = emd;
             this.isPrimaryField = isPrimaryField;
 
-            var name = pcf.Resxes.FirstOrDefault()?.GetText(param.displayname) ?? param.name;
+            var name = param.displayname != null && pcf.Resxes.FirstOrDefault() != null ? pcf.Resxes.FirstOrDefault()?.GetText(param.displayname) : param.name;
             var description = pcf.Resxes.FirstOrDefault()?.GetText(param.description) ?? param.description;
 
             lblParamName.Text = $"{name} *";

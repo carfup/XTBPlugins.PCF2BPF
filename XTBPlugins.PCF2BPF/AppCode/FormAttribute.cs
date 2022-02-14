@@ -1,6 +1,7 @@
 ﻿using Carfup.XTBPlugins.Controls;
 using Microsoft.Xrm.Sdk.Metadata;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Xml;
 
@@ -23,7 +24,7 @@ namespace Carfup.XTBPlugins.AppCode
 
         public AttributeMetadata Amd { get; private set; }
         public BpfFieldControl Control { get; set; }
-        public string CustomControlName => _customControlNode?.Attributes["name"]?.Value;
+        public string CustomControlName => _customControlNode?.FirstChild?.Attributes["name"]?.Value;
         public XmlNode CustomControlNode => _customControlNode;
         public string DisplayName => _displayName;
         public EntityMetadata Emd { get; private set; }
@@ -38,7 +39,7 @@ namespace Carfup.XTBPlugins.AppCode
             set
             {
                 _pcfConfiguration = value;
-                if (_pcfConfiguration != null && string.IsNullOrEmpty(_pcfConfiguration.Parameters.First().value?.ToString()))
+                if (_pcfConfiguration != null && _pcfConfiguration.Parameters.Count != 0 && string.IsNullOrEmpty(_pcfConfiguration.Parameters.First().value?.ToString()))
                 {
                     _pcfConfiguration.Parameters.First().value = LogicalName;
                 }
@@ -60,15 +61,15 @@ namespace Carfup.XTBPlugins.AppCode
             _controlNode.Attributes.Append(uniqueIdAttr);
 
             // Node controlDescriptionsNode
-            var controlDescriptionsNode = _controlNode.OwnerDocument.DocumentElement.SelectSingleNode("controlDescriptionsNode");
+            var controlDescriptionsNode = _controlNode.OwnerDocument.DocumentElement.SelectSingleNode("controlDescriptions");
             if (controlDescriptionsNode == null)
             {
-                controlDescriptionsNode = _controlNode.OwnerDocument.CreateElement("controlDescriptionsNode");
+                controlDescriptionsNode = _controlNode.OwnerDocument.CreateElement("controlDescriptions");
                 _controlNode.OwnerDocument.DocumentElement.AppendChild(controlDescriptionsNode);
             }
 
             // Node controlDescriptionNode
-            var controlDescriptionNode = _controlNode.OwnerDocument.CreateElement("controlDescriptionNode");
+            var controlDescriptionNode = _controlNode.OwnerDocument.CreateElement("controlDescription");
             controlDescriptionsNode.AppendChild(controlDescriptionNode);
 
             var forControlAttr = _controlNode.OwnerDocument.CreateAttribute("forControl");
@@ -118,7 +119,7 @@ namespace Carfup.XTBPlugins.AppCode
 
         public void EditCustomControl(PCFDetails pcf)
         {
-            var parametersNode = _customControlNode.SelectSingleNode("parameters");
+            var parametersNode = _customControlNode.SelectSingleNode(".//parameters");
             if (parametersNode != null)
             {
                 foreach (var param in pcf.Parameters)
@@ -165,10 +166,11 @@ namespace Carfup.XTBPlugins.AppCode
 
         #endregion CustomControl Management
 
-        public void Initialize(PCFDetails pcfDefinition)
+        public void Initialize(List<PCFDetails> pcfAvailableDetailsList)
         {
             _uniqueId = _controlNode.Attributes["uniqueid"] != null ? new Guid(_controlNode.Attributes["uniqueid"].Value) : Guid.Empty;
             _customControlNode = _controlNode.OwnerDocument.SelectSingleNode($"//controlDescription[@forControl=\"{UniqueId:B}\"]");
+            var pcfDefinition = pcfAvailableDetailsList.FirstOrDefault(x => x.Name == CustomControlName);
 
             if (_uniqueId != Guid.Empty && CustomControlNode == null)
             {
@@ -185,7 +187,8 @@ namespace Carfup.XTBPlugins.AppCode
                     Manifest = pcfDefinition.Manifest,
                     Name = pcfDefinition.Name,
                     Resxes = pcfDefinition.Resxes,
-                    TypeGroups = pcfDefinition.TypeGroups
+                    TypeGroups = pcfDefinition.TypeGroups,
+                    Parameters = new List<PCFParameter>()
                 };
 
                 foreach (XmlNode property in _customControlNode.SelectNodes(".//parameters/*"))
