@@ -36,6 +36,9 @@ namespace Carfup.XTBPlugins.PCF2BPF
         public PCF2BPF()
         {
             InitializeComponent();
+
+            SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
+            SetStyle(ControlStyles.AllPaintingInWmPaint, true);
         }
 
         public void SetAddPcf(FormAttribute attribute)
@@ -194,14 +197,38 @@ namespace Carfup.XTBPlugins.PCF2BPF
                     }
                     else
                     {
-                        var rels = bpfForm.Tabs.SelectMany(t => t.Attributes).Select(a => a.Relationship);
+                        var rels = bpfForm.Tabs.SelectMany(t => t.Attributes).Select(a => a.Relationship).Distinct();
 
                         bw.ReportProgress(0, "Loading related metadata...");
 
-                        List<EntityMetadata> emds = this.controllerManager.dataManager.GetMetadata(rels);
+                        var emds = this.controllerManager.dataManager.GetMetadata(rels);
                         bpfForm.ApplyMetadata(emds);
 
-                        e.Result = bpfForm;
+                        bw.ReportProgress(0, "Building BPF...");
+
+                        var ctrls = new List<UserControl>();
+
+                        foreach (var tab in bpfForm.Tabs)
+                        {
+                            var bpfStageCtrl = new BpfStageControl(tab.ToString()) { Dock = DockStyle.Top };
+                            bpfStageCtrl.Tag = tab;
+                            tab.Control = bpfStageCtrl;
+                            ctrls.Add(bpfStageCtrl);
+
+                            foreach (var attr in tab.Attributes)
+                            {
+                                attr.Initialize(pcfAvailableDetailsList);
+                                var bpfFieldCtrl = new BpfFieldControl(attr.ToString()) { Dock = DockStyle.Top };
+                                bpfFieldCtrl.OnActionRequested += BpfFieldCtrl_OnActionRequested;
+                                bpfFieldCtrl.Tag = attr;
+                                attr.Control = bpfFieldCtrl;
+                                ctrls.Add(bpfFieldCtrl);
+                            }
+                        }
+
+                        ctrls.Reverse();
+
+                        e.Result = new Tuple<List<UserControl>, string>(ctrls, bpfForm.SystemForm.GetAttributeValue<string>("formxml"));
                     }
                 },
                 PostWorkCallBack = e =>
@@ -212,31 +239,11 @@ namespace Carfup.XTBPlugins.PCF2BPF
                         return;
                     }
 
-                    var fx = (FormXml)e.Result;
-                    var ctrls = new List<UserControl>();
+                    var result = (Tuple<List<UserControl>, string>)e.Result;
 
-                    foreach (var tab in fx.Tabs)
-                    {
-                        var bpfStageCtrl = new BpfStageControl(tab.ToString()) { Dock = DockStyle.Top };
-                        bpfStageCtrl.Tag = tab;
-                        tab.Control = bpfStageCtrl;
-                        ctrls.Add(bpfStageCtrl);
+                    panelStagesFields.Controls.AddRange(result.Item1.ToArray());
 
-                        foreach (var attr in tab.Attributes)
-                        {
-                            attr.Initialize(pcfAvailableDetailsList);
-                            var bpfFieldCtrl = new BpfFieldControl(attr.ToString()) { Dock = DockStyle.Top };
-                            bpfFieldCtrl.OnActionRequested += BpfFieldCtrl_OnActionRequested;
-                            bpfFieldCtrl.Tag = attr;
-                            attr.Control = bpfFieldCtrl;
-                            ctrls.Add(bpfFieldCtrl);
-                        }
-                    }
-
-                    ctrls.Reverse();
-                    panelStagesFields.Controls.AddRange(ctrls.ToArray());
-
-                    txbFormXml.Text = fx.SystemForm.GetAttributeValue<string>("formxml");
+                    txbFormXml.Text = result.Item2;
                 },
                 ProgressChanged = e => { SetWorkingMessage(e.UserState.ToString()); }
             });

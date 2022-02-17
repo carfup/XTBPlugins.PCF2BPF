@@ -60,9 +60,28 @@ namespace Carfup.XTBPlugins.AppCode
 
         internal List<EntityMetadata> GetMetadata(IEnumerable<string> rels)
         {
+            var entities = new List<string>();
+
+            foreach (var rel in rels)
+            {
+                RetrieveRelationshipRequest r = new RetrieveRelationshipRequest
+                {
+                    Name = rel
+                };
+                var relResponse = (RetrieveRelationshipResponse)this.connection.serviceClient.Execute(r);
+                entities.Add(((OneToManyRelationshipMetadata)relResponse.RelationshipMetadata).ReferencedEntity);
+            }
+
             var query = new EntityQueryExpression
             {
                 Properties = new MetadataPropertiesExpression("DisplayName", "Attributes", "OneToManyRelationships"),
+                Criteria = new MetadataFilterExpression
+                {
+                    Conditions =
+                    {
+                        new MetadataConditionExpression("LogicalName", MetadataConditionOperator.In, entities.ToArray())
+                    }
+                },
                 AttributeQuery = new AttributeQueryExpression
                 {
                     Properties = new MetadataPropertiesExpression("DisplayName", "FormatName", "Format"),
@@ -81,7 +100,7 @@ namespace Carfup.XTBPlugins.AppCode
             };
 
             var response = (RetrieveMetadataChangesResponse)this.connection.serviceClient.Execute(new RetrieveMetadataChangesRequest { Query = query });
-            return response.EntityMetadata.ToList();
+            return response.EntityMetadata.Where(emd => emd.OneToManyRelationships.Count() > 0).ToList();
         }
 
         internal int GetUserLcid()
