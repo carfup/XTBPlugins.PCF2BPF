@@ -318,6 +318,11 @@ namespace Carfup.XTBPlugins.PCF2BPF
             panelParams.Controls.Clear();
             var controls = new List<UserControl>();
 
+            if (pcf.Resxes.Any(r => r.IsLoaded == false))
+            {
+                pcf.Resxes.ForEach(r => r.Load(Service));
+            }
+
             int i = 0;
             foreach (var param in pcf.Parameters)
             {
