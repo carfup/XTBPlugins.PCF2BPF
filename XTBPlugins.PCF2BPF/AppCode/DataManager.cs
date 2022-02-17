@@ -83,5 +83,21 @@ namespace Carfup.XTBPlugins.AppCode
             var response = (RetrieveMetadataChangesResponse)this.connection.serviceClient.Execute(new RetrieveMetadataChangesRequest { Query = query });
             return response.EntityMetadata.ToList();
         }
+
+        internal int GetUserLcid()
+        {
+            return this.connection.serviceClient.RetrieveMultiple(new QueryExpression("usersettings")
+            {
+                NoLock = true,
+                ColumnSet = new ColumnSet("uilanguageid"),
+                Criteria = new FilterExpression
+                {
+                    Conditions =
+                    {
+                        new ConditionExpression("systemuserid", ConditionOperator.EqualUserId)
+                    }
+                }
+            }).Entities.First().GetAttributeValue<int>("uilanguageid");
+        }
     }
 }

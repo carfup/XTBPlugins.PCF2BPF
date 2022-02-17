@@ -19,7 +19,7 @@ namespace Carfup.XTBPlugins.Controls
         private PCFDetails pcf;
         private IOrganizationService service;
 
-        public PcfControlParameter(IOrganizationService service, Dictionary<string, string> mappingType, PCFDetails pcf, PCFParameter param, EntityMetadata emd, bool isPrimaryField)
+        public PcfControlParameter(IOrganizationService service, Dictionary<string, string> mappingType, PCFDetails pcf, PCFParameter param, EntityMetadata emd, bool isPrimaryField, int lcid)
         {
             InitializeComponent();
 
@@ -30,8 +30,8 @@ namespace Carfup.XTBPlugins.Controls
             this.emd = emd;
             this.isPrimaryField = isPrimaryField;
 
-            var name = param.displayname != null && pcf.Resxes.FirstOrDefault() != null ? pcf.Resxes.FirstOrDefault()?.GetText(param.displayname) : param.name;
-            var description = pcf.Resxes.FirstOrDefault()?.GetText(param.description) ?? param.description;
+            var name = param.displayname != null && pcf.Resxes.FirstOrDefault(r => r.Lcid == lcid) != null ? pcf.Resxes.FirstOrDefault(r => r.Lcid == lcid)?.GetText(param.displayname) : param.name;
+            var description = pcf.Resxes.FirstOrDefault(r => r.Lcid == lcid)?.GetText(param.description) ?? param.description;
 
             lblParamName.Text = $"{name} *";
             lblParamUsage.Text = param.usage;

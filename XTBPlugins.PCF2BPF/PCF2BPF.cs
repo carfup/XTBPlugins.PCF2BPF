@@ -31,6 +31,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
         private Dictionary<string, string> mappingType = new Dictionary<string, string>();
         private List<PCFDetails> pcfAvailableDetailsList = new List<PCFDetails>();
         private PCFDetails pcfEditing;
+        private int userLcid;
 
         public PCF2BPF()
         {
@@ -55,7 +56,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             SetPossiblePCf(attribute);
 
             // Auto select the dropdown list here & disable it
-            
+
             cbPossiblePCFs.SelectedText = attribute.PcfConfiguration.Name;
             cbPossiblePCFs.Enabled = false;
 
@@ -313,7 +314,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             int i = 0;
             foreach (var param in pcf.Parameters)
             {
-                controls.Add(new PcfControlParameter(Service, mappingType, pcf, param, _currentAttribute.Emd, i == 0) { Dock = DockStyle.Top });
+                controls.Add(new PcfControlParameter(Service, mappingType, pcf, param, _currentAttribute.Emd, i == 0, userLcid) { Dock = DockStyle.Top });
                 i++;
             }
             controls.Reverse();
@@ -353,6 +354,10 @@ namespace Carfup.XTBPlugins.PCF2BPF
                     bw.ReportProgress(0, "Loading available PCF in your environment...");
 
                     pcfAvailableDetailsList = this.controllerManager.dataManager.RetrievePcfList().Select(pcf => PCFDetails.Load(pcf)).ToList();
+
+                    bw.ReportProgress(0, "Loading current user language...");
+
+                    userLcid = this.controllerManager.dataManager.GetUserLcid();
                 },
                 PostWorkCallBack = e =>
                 {
