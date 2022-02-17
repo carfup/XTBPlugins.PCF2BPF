@@ -253,15 +253,9 @@ namespace Carfup.XTBPlugins.PCF2BPF
         {
             var selectedPCF = cbPossiblePCFs.SelectedItem.ToString();
 
-            pcfAvailableDetailsList.FirstOrDefault(x => x.Name == selectedPCF)?.Resxes?.FirstOrDefault()?.Load(Service);
-            _currentAttribute.PcfConfiguration?.Resxes?.FirstOrDefault()?.Load(Service);
-
             pcfEditing = pcfAvailableDetailsList.First(x => x.Name == selectedPCF).Clone();
 
-            if (_currentAttribute.PcfConfiguration == null)
-            {
-                _currentAttribute.PcfConfiguration = pcfEditing.Clone();
-            }
+            _currentAttribute.PcfConfiguration = pcfEditing.Clone();
 
             LoadParamToPanel(_currentAttribute.PcfConfiguration);
         }
