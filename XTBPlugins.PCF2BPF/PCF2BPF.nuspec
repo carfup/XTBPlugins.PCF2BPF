@@ -1,0 +1,27 @@
+﻿<package>
+  <metadata>
+    <id>Carfup.XTBPlugins.PCF2BPF</id>
+    <version>1.2022.1.12</version>
+    <title>PCF 2 BPF</title>
+    <authors>Clement Olivier and Tanguy Touzard</authors>
+    <owners>Clement Olivier</owners>
+    <projectUrl>https://github.com/carfup/XTBPlugins.PCF2BPF</projectUrl>
+	<iconUrl>http://www.gravatar.com/avatar/8b87aef303e872503c47ef3fdf83c801?s=64</iconUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>This tool will allow you add,modify or remove a PCF control attached to a field within your BPF in few clicks only.</description>
+    <summary>Manage PCF control within your BPF.</summary>
+    <releaseNotes>
+1.2022.1.1
+Manage the PCF controls within your BPF.
+Load all BPF entities, load available PCF within the environment, select the BPF to modify, BPF Form is rendered, edit your controls and finally publish.
+    </releaseNotes>
+    <copyright>Copyright 2022</copyright>
+    <tags>XrmToolBox Plugin PCF2BPF</tags>
+    <dependencies>
+		  <dependency id="XrmToolBox" version="1.2021.12.53" />
+    </dependencies>
+  </metadata>
+  <files>
+	  <file src="bin\Release\Carfup.XTBPlugins.*.dll" target="lib\net462\Plugins" />
+  </files>
+</package>

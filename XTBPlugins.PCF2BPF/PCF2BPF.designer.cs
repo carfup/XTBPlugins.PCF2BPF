@@ -30,7 +30,9 @@ namespace Carfup.XTBPlugins.PCF2BPF
         private void InitializeComponent()
         {
             this.toolStripMenu = new System.Windows.Forms.ToolStrip();
+            this.tsbClose = new System.Windows.Forms.ToolStripButton();
             this.tssSeparator1 = new System.Windows.Forms.ToolStripSeparator();
+            this.toolStripButton1 = new System.Windows.Forms.ToolStripButton();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
             this.panelRight = new System.Windows.Forms.Panel();
@@ -53,8 +55,6 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.label4 = new System.Windows.Forms.Label();
             this.txbModifiedFormXml = new System.Windows.Forms.TextBox();
             this.label5 = new System.Windows.Forms.Label();
-            this.tsbClose = new System.Windows.Forms.ToolStripButton();
-            this.toolStripButton1 = new System.Windows.Forms.ToolStripButton();
             this.toolStripMenu.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
@@ -82,10 +82,29 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.toolStripMenu.TabIndex = 4;
             this.toolStripMenu.Text = "toolStrip1";
             // 
+            // tsbClose
+            // 
+            this.tsbClose.Image = global::Carfup.XTBPlugins.Properties.Resources.close;
+            this.tsbClose.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.tsbClose.Name = "tsbClose";
+            this.tsbClose.Size = new System.Drawing.Size(110, 28);
+            this.tsbClose.Text = "Close this tool";
+            this.tsbClose.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.tsbClose.Click += new System.EventHandler(this.tsbClose_Click);
+            // 
             // tssSeparator1
             // 
             this.tssSeparator1.Name = "tssSeparator1";
             this.tssSeparator1.Size = new System.Drawing.Size(6, 31);
+            // 
+            // toolStripButton1
+            // 
+            this.toolStripButton1.Image = global::Carfup.XTBPlugins.Properties.Resources.load;
+            this.toolStripButton1.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.toolStripButton1.Name = "toolStripButton1";
+            this.toolStripButton1.Size = new System.Drawing.Size(89, 28);
+            this.toolStripButton1.Text = "Load BPFs";
+            this.toolStripButton1.Click += new System.EventHandler(this.btnLoadEntities_Click);
             // 
             // tabControl1
             // 
@@ -124,6 +143,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             // 
             // panelParams
             // 
+            this.panelParams.AutoScroll = true;
             this.panelParams.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panelParams.Location = new System.Drawing.Point(0, 63);
             this.panelParams.Name = "panelParams";
@@ -333,25 +353,6 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.label5.Size = new System.Drawing.Size(29, 13);
             this.label5.TabIndex = 21;
             this.label5.Text = "After";
-            // 
-            // tsbClose
-            // 
-            this.tsbClose.Image = global::Carfup.XTBPlugins.Properties.Resources.close;
-            this.tsbClose.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.tsbClose.Name = "tsbClose";
-            this.tsbClose.Size = new System.Drawing.Size(110, 28);
-            this.tsbClose.Text = "Close this tool";
-            this.tsbClose.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.tsbClose.Click += new System.EventHandler(this.tsbClose_Click);
-            // 
-            // toolStripButton1
-            // 
-            this.toolStripButton1.Image = global::Carfup.XTBPlugins.Properties.Resources.load;
-            this.toolStripButton1.ImageTransparentColor = System.Drawing.Color.Magenta;
-            this.toolStripButton1.Name = "toolStripButton1";
-            this.toolStripButton1.Size = new System.Drawing.Size(89, 28);
-            this.toolStripButton1.Text = "Load BPFs";
-            this.toolStripButton1.Click += new System.EventHandler(this.btnLoadEntities_Click);
             // 
             // PCF2BPF
             // 

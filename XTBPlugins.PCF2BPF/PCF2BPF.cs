@@ -88,11 +88,21 @@ namespace Carfup.XTBPlugins.PCF2BPF
             var searchType = GetTypeMapping(attribute.Amd);
             var potentialPCFs = pcfAvailableDetailsList.Where(x => x.CompatibleDataTypes.Contains(searchType));
 
-            cbPossiblePCFs.Items.AddRange(potentialPCFs.Select(x => x.Name).OrderBy(y => y).ToArray());
+            var items = potentialPCFs.Select(x => x.Name).OrderBy(y => y).ToArray();
+
+            cbPossiblePCFs.Items.AddRange(items);
             cbPossiblePCFs.Enabled = true;
             cbPossiblePCFs.Focus();
 
             panelRight.Visible = true;
+
+            if (items.Length == 0)
+            {
+                MessageBox.Show($"There are not compatible PCF with the field type '{attribute.Amd.AttributeType.Value.ToString()}'.", "No PCF available for this field.", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                log.LogData(EventType.Exception, LogAction.FieldTypeNotSupported, new Exception($"{attribute.Amd.AttributeType.Value.ToString()} no compatible PCF"));
+                return;
+            }
+
             log.LogData(EventType.Event, LogAction.PossiblePcfSet);
         }
 
@@ -212,7 +222,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
                     if (bpfForm == null || bpfForm.SystemForm.GetAttributeValue<string>("formxml").Contains("<hiddencontrols>"))
                     {
                         log.LogData(EventType.Trace, LogAction.BpfNotSupportedYet);
-                        throw new Exception("This BPF is not yet supported. We do hope it will be the case in a near future.");
+                        throw new Exception($"This BPF is not yet supported. {Environment.NewLine}{Environment.NewLine}Please try to perform an update or activate the selected BPF in order to regenerate the XML and fix the issue.{Environment.NewLine}{Environment.NewLine}Else we do hope it will be the case in a near future.");
                     }
                     else
                     {
@@ -270,17 +280,37 @@ namespace Carfup.XTBPlugins.PCF2BPF
             });
         }
 
-        private void cbPossiblePCFs_SelectedIndexChanged(object sender, EventArgs e)
+        private void cbPossiblePCFs_SelectedIndexChanged(object sender, EventArgs evt)
         {
             var selectedPCF = cbPossiblePCFs.SelectedItem.ToString();
 
-            pcfEditing = pcfAvailableDetailsList.First(x => x.Name == selectedPCF).Clone();
+            WorkAsync(new WorkAsyncInfo
+            {
+                Message = "Loading PCF parameters details...",
+                Work = (bw, e) =>
+                {
+                    pcfEditing = pcfAvailableDetailsList.First(x => x.Name == selectedPCF).Clone();
 
-            _currentAttribute.PcfConfiguration = pcfEditing.Clone();
+                    _currentAttribute.PcfConfiguration = pcfEditing.Clone();
 
-            LoadParamToPanel(_currentAttribute.PcfConfiguration);
+                    Invoke(new Action(() =>
+                    {
+                        LoadParamToPanel(_currentAttribute.PcfConfiguration);
+                    }));
+                },
+                PostWorkCallBack = e =>
+                {
+                    if (e.Error != null)
+                    {
+                        log.LogData(EventType.Exception, LogAction.PossiblePcfLoaded, e.Error);
+                        MessageBox.Show(this, e.Error.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
 
-            log.LogData(EventType.Event, LogAction.PossiblePcfLoaded);
+                    log.LogData(EventType.Event, LogAction.PossiblePcfLoaded);
+                },
+                ProgressChanged = e => { SetWorkingMessage(e.UserState.ToString()); }
+            });
         }
 
         private string GetTypeMapping(AttributeMetadata amd, bool fromAttrToPcf = true)
@@ -348,7 +378,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             }
             controls.Reverse();
 
-            panelParams.Controls.AddRange(controls.ToArray());
+            panelParams.Controls.AddRange(controls.ToArray());            
         }
 
         private void MyPluginControl_Load(object sender, EventArgs e)
