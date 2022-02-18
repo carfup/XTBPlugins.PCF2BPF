@@ -3,4 +3,4 @@
 
 This plugin for XrmToolBox will allow you to easily manage the PCF controls wihtin your Business Process Flows.
 #### How to use the plugin : 
-![](https://raw.githubusercontent.com/carfup/XTBPlugins.PCF2BPF/dev/XTBPlugins.PCF2BPF/Resources/pcf2bpf.png)
+![](https://raw.githubusercontent.com/carfup/XTBPlugins.PCF2BPF/dev/XTBPlugins.PCF2BPF/Resources/pcf2bpfhowto.png)
