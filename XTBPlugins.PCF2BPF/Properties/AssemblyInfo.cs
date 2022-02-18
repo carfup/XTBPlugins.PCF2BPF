@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("Carfup.XTBPlugins.PCF2BPF")]
 [assembly: AssemblyDescription("Manage PCF controls on your Business Process Flows in few clicks !")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Clément Olivier & Tanguy Touzard")]
+[assembly: AssemblyCompany("Clément Olivier and Tanguy Touzard")]
 [assembly: AssemblyProduct("Carfup.XTBPlugins.PCF2BPF")]
 [assembly: AssemblyCopyright("Copyright ©  2022")]
 [assembly: AssemblyTrademark("")]

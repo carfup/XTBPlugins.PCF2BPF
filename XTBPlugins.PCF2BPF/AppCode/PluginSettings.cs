@@ -27,22 +27,6 @@ namespace Carfup.XTBPlugins.AppCode
         public static string INSIGHTS_INTRUMENTATIONKEY = "INSIGHTS_INTRUMENTATIONKEY_TOREPLACE";
     }
 
-    static class UserDataType
-    {
-        public const string Views = "view";
-        public const string Dashboards = "dashboard";
-        public const string Charts = "chart";
-        public const string ViewLogicalName = "userquery";
-        public const string DashboardLogicalName = "userform";
-        public const string ChartLogicalName = "userqueryvisualization";
-    }
-
-    public class UserInfo
-    {
-        public Guid? userId { get; set; }
-        public string userEntity { get; set; }
-    }
-
     // EventType to qualify which action was performed by the plugin
     static class LogAction
     {
