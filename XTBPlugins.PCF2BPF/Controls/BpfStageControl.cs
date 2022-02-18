@@ -14,5 +14,22 @@ namespace Carfup.XTBPlugins.Controls
 
             lblStage.Text = stageName;
         }
+
+        private void BpfStageControl_Load(object sender, EventArgs e)
+        {
+            if (lblStage.Text.StartsWith("Stage"))
+            {
+                pbWarning.Visible = true;
+
+                var descToolTip = new ToolTip()
+                {
+                    ToolTipIcon = ToolTipIcon.Warning,
+                    IsBalloon = true,
+                    ShowAlways = true,
+                    ToolTipTitle = "Why do I see this?"
+                };
+                descToolTip.SetToolTip(pbWarning, "Your BPF definition does not contain title for this stage. Consider updating the PBF definition to force title display");
+            }
+        }
     }
 }

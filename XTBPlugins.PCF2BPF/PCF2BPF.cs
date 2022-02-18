@@ -34,6 +34,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
         private Dictionary<string, string> mappingType = new Dictionary<string, string>();
         private List<PCFDetails> pcfAvailableDetailsList = new List<PCFDetails>();
         private PCFDetails pcfEditing;
+        private int userLcid;
         public LogUsageManager log = null;
         internal PluginSettings settings = new PluginSettings();
 
@@ -42,10 +43,12 @@ namespace Carfup.XTBPlugins.PCF2BPF
         public string EmailAccount => "clement@carfup.com";
         public string DonationDescription => "Thanks a lot for your support, this really mean something to me, and push me to keep going for sure ! Long life to PCF2BPF ! =)";
 
-
         public PCF2BPF()
         {
             InitializeComponent();
+
+            SetStyle(ControlStyles.OptimizedDoubleBuffer, true);
+            SetStyle(ControlStyles.AllPaintingInWmPaint, true);
         }
 
         public void SetAddPcf(FormAttribute attribute)
@@ -66,7 +69,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             SetPossiblePCf(attribute);
 
             // Auto select the dropdown list here & disable it
-            
+
             cbPossiblePCFs.SelectedText = attribute.PcfConfiguration.Name;
             cbPossiblePCFs.Enabled = false;
 
@@ -213,14 +216,38 @@ namespace Carfup.XTBPlugins.PCF2BPF
                     }
                     else
                     {
-                        var rels = bpfForm.Tabs.SelectMany(t => t.Attributes).Select(a => a.Relationship);
+                        var rels = bpfForm.Tabs.SelectMany(t => t.Attributes).Select(a => a.Relationship).Distinct();
 
                         bw.ReportProgress(0, "Loading related metadata...");
 
-                        List<EntityMetadata> emds = this.controllerManager.dataManager.GetMetadata(rels);
+                        var emds = this.controllerManager.dataManager.GetMetadata(rels);
                         bpfForm.ApplyMetadata(emds);
 
-                        e.Result = bpfForm;
+                        bw.ReportProgress(0, "Building BPF...");
+
+                        var ctrls = new List<UserControl>();
+
+                        foreach (var tab in bpfForm.Tabs)
+                        {
+                            var bpfStageCtrl = new BpfStageControl(tab.ToString()) { Dock = DockStyle.Top };
+                            bpfStageCtrl.Tag = tab;
+                            tab.Control = bpfStageCtrl;
+                            ctrls.Add(bpfStageCtrl);
+
+                            foreach (var attr in tab.Attributes)
+                            {
+                                attr.Initialize(pcfAvailableDetailsList);
+                                var bpfFieldCtrl = new BpfFieldControl(attr.ToString()) { Dock = DockStyle.Top };
+                                bpfFieldCtrl.OnActionRequested += BpfFieldCtrl_OnActionRequested;
+                                bpfFieldCtrl.Tag = attr;
+                                attr.Control = bpfFieldCtrl;
+                                ctrls.Add(bpfFieldCtrl);
+                            }
+                        }
+
+                        ctrls.Reverse();
+
+                        e.Result = new Tuple<List<UserControl>, string>(ctrls, bpfForm.SystemForm.GetAttributeValue<string>("formxml"));
                     }
                 },
                 PostWorkCallBack = e =>
@@ -232,32 +259,12 @@ namespace Carfup.XTBPlugins.PCF2BPF
                         return;
                     }
 
-                    var fx = (FormXml)e.Result;
-                    var ctrls = new List<UserControl>();
+                    var result = (Tuple<List<UserControl>, string>)e.Result;
 
-                    foreach (var tab in fx.Tabs)
-                    {
-                        var bpfStageCtrl = new BpfStageControl(tab.ToString()) { Dock = DockStyle.Top };
-                        bpfStageCtrl.Tag = tab;
-                        tab.Control = bpfStageCtrl;
-                        ctrls.Add(bpfStageCtrl);
-
-                        foreach (var attr in tab.Attributes)
-                        {
-                            attr.Initialize(pcfAvailableDetailsList);
-                            var bpfFieldCtrl = new BpfFieldControl(attr.ToString()) { Dock = DockStyle.Top };
-                            bpfFieldCtrl.OnActionRequested += BpfFieldCtrl_OnActionRequested;
-                            bpfFieldCtrl.Tag = attr;
-                            attr.Control = bpfFieldCtrl;
-                            ctrls.Add(bpfFieldCtrl);
-                        }
-                    }
-
-                    ctrls.Reverse();
-                    panelStagesFields.Controls.AddRange(ctrls.ToArray());
-
-                    txbFormXml.Text = fx.SystemForm.GetAttributeValue<string>("formxml");
+                    panelStagesFields.Controls.AddRange(result.Item1.ToArray());
+                    txbFormXml.Text = result.Item2;
                     log.LogData(EventType.Event, LogAction.LoadingBpfFormDetails);
+                    
                 },
                 ProgressChanged = e => { SetWorkingMessage(e.UserState.ToString()); }
             });
@@ -267,15 +274,9 @@ namespace Carfup.XTBPlugins.PCF2BPF
         {
             var selectedPCF = cbPossiblePCFs.SelectedItem.ToString();
 
-            pcfAvailableDetailsList.FirstOrDefault(x => x.Name == selectedPCF)?.Resxes?.FirstOrDefault()?.Load(Service);
-            _currentAttribute.PcfConfiguration?.Resxes?.FirstOrDefault()?.Load(Service);
-
             pcfEditing = pcfAvailableDetailsList.First(x => x.Name == selectedPCF).Clone();
 
-            if (_currentAttribute.PcfConfiguration == null)
-            {
-                _currentAttribute.PcfConfiguration = pcfEditing.Clone();
-            }
+            _currentAttribute.PcfConfiguration = pcfEditing.Clone();
 
             LoadParamToPanel(_currentAttribute.PcfConfiguration);
 
@@ -334,10 +335,15 @@ namespace Carfup.XTBPlugins.PCF2BPF
             panelParams.Controls.Clear();
             var controls = new List<UserControl>();
 
+            if (pcf.Resxes.Any(r => r.IsLoaded == false))
+            {
+                pcf.Resxes.ForEach(r => r.Load(Service));
+            }
+
             int i = 0;
             foreach (var param in pcf.Parameters)
             {
-                controls.Add(new PcfControlParameter(Service, mappingType, pcf, param, _currentAttribute.Emd, i == 0) { Dock = DockStyle.Top });
+                controls.Add(new PcfControlParameter(Service, mappingType, pcf, param, _currentAttribute.Emd, i == 0, userLcid) { Dock = DockStyle.Top });
                 i++;
             }
             controls.Reverse();
@@ -381,6 +387,10 @@ namespace Carfup.XTBPlugins.PCF2BPF
                     bw.ReportProgress(0, "Loading available PCF in your environment...");
 
                     pcfAvailableDetailsList = this.controllerManager.dataManager.RetrievePcfList().Select(pcf => PCFDetails.Load(pcf)).ToList();
+
+                    bw.ReportProgress(0, "Loading current user language...");
+
+                    userLcid = this.controllerManager.dataManager.GetUserLcid();
                 },
                 PostWorkCallBack = e =>
                 {
