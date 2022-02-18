@@ -40,7 +40,7 @@
             this.lblStage.ForeColor = System.Drawing.Color.White;
             this.lblStage.Location = new System.Drawing.Point(0, 0);
             this.lblStage.Name = "lblStage";
-            this.lblStage.Size = new System.Drawing.Size(426, 44);
+            this.lblStage.Size = new System.Drawing.Size(371, 37);
             this.lblStage.TabIndex = 4;
             this.lblStage.Text = "label1";
             this.lblStage.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
@@ -49,9 +49,9 @@
             // 
             this.pbWarning.Dock = System.Windows.Forms.DockStyle.Right;
             this.pbWarning.Image = global::Carfup.XTBPlugins.Properties.Resources.warning;
-            this.pbWarning.Location = new System.Drawing.Point(438, 0);
+            this.pbWarning.Location = new System.Drawing.Point(371, 0);
             this.pbWarning.Name = "pbWarning";
-            this.pbWarning.Size = new System.Drawing.Size(44, 44);
+            this.pbWarning.Size = new System.Drawing.Size(44, 37);
             this.pbWarning.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
             this.pbWarning.TabIndex = 2;
             this.pbWarning.TabStop = false;
@@ -67,6 +67,7 @@
             this.Name = "BpfStageControl";
             this.Padding = new System.Windows.Forms.Padding(0, 0, 6, 0);
             this.Size = new System.Drawing.Size(421, 37);
+            this.Load += new System.EventHandler(this.BpfStageControl_Load);
             ((System.ComponentModel.ISupportInitialize)(this.pbWarning)).EndInit();
             this.ResumeLayout(false);
 

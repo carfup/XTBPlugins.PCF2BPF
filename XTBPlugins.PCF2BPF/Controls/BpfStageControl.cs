@@ -13,8 +13,11 @@ namespace Carfup.XTBPlugins.Controls
             BackColor = Color.FromArgb(232, 62, 15);
 
             lblStage.Text = stageName;
+        }
 
-            if (stageName.StartsWith("Stage"))
+        private void BpfStageControl_Load(object sender, EventArgs e)
+        {
+            if (lblStage.Text.StartsWith("Stage"))
             {
                 pbWarning.Visible = true;
 
