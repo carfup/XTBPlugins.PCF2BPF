@@ -6,10 +6,13 @@ using Microsoft.Xrm.Sdk.Metadata;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
+using System.Reflection;
 using System.Windows.Forms;
 using XrmToolBox.Extensibility;
+using XrmToolBox.Extensibility.Interfaces;
 
 namespace Carfup.XTBPlugins.PCF2BPF
 {
@@ -21,7 +24,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
         delete
     }
 
-    public partial class PCF2BPF : PluginControlBase
+    public partial class PCF2BPF : PluginControlBase, IGitHubPlugin, IPayPalPlugin
     {
         private FormAttribute _currentAttribute;
         private actions actionInProgress = actions.none;
@@ -32,6 +35,13 @@ namespace Carfup.XTBPlugins.PCF2BPF
         private List<PCFDetails> pcfAvailableDetailsList = new List<PCFDetails>();
         private PCFDetails pcfEditing;
         private int userLcid;
+        public LogUsageManager log = null;
+        internal PluginSettings settings = new PluginSettings();
+
+        public string RepositoryName => "XTBPlugins.PCF2BPF";
+        public string UserName => "carfup";
+        public string EmailAccount => "clement@carfup.com";
+        public string DonationDescription => "Thanks a lot for your support, this really mean something to me, and push me to keep going for sure ! Long life to PCF2BPF ! =)";
 
         public PCF2BPF()
         {
@@ -67,6 +77,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             _currentAttribute = attribute;
 
             LoadParamToPanel(attribute.PcfConfiguration);
+            log.LogData(EventType.Event, LogAction.ExistingPcfDetailsLoaded);
         }
 
         public void SetPossiblePCf(FormAttribute attribute)
@@ -82,6 +93,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             cbPossiblePCFs.Focus();
 
             panelRight.Visible = true;
+            log.LogData(EventType.Event, LogAction.PossiblePcfSet);
         }
 
         /// <summary>
@@ -104,6 +116,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
                     if (_currentAttribute != null) _currentAttribute.Control.BackColor = Color.Transparent;
                     SetAddPcf(attribute);
+                    log.LogData(EventType.Event, LogAction.AddingControl);
                     break;
 
                 case BpfFieldControlAction.Remove:
@@ -112,11 +125,13 @@ namespace Carfup.XTBPlugins.PCF2BPF
                     panelRight.Visible = false;
                     panelParams.Controls.Clear();
                     txbModifiedFormXml.Text = bpfForm.GetCurrentXml();
+                    log.LogData(EventType.Event, LogAction.ControlRemoved);
                     break;
 
                 case BpfFieldControlAction.Edit:
                     if (_currentAttribute != null) _currentAttribute.Control.BackColor = Color.Transparent;
                     SetExistingPCFDetails(attribute);
+                    log.LogData(EventType.Event, LogAction.ModifyingControl);
                     break;
             }
         }
@@ -134,10 +149,12 @@ namespace Carfup.XTBPlugins.PCF2BPF
             if (actionInProgress == actions.modify)
             {
                 _currentAttribute.EditCustomControl(pcfEditing);
+                log.LogData(EventType.Event, LogAction.ControlModified);
             }
             else if (actionInProgress == actions.add)
             {
                 _currentAttribute.AddCustomControl(pcfEditing);
+                log.LogData(EventType.Event, LogAction.ControlAdded);
             }
 
             panelRight.Visible = false;
@@ -164,11 +181,12 @@ namespace Carfup.XTBPlugins.PCF2BPF
                 {
                     if (e.Error != null)
                     {
-                        // this.log.LogData(EventType.Exception, LogAction.UsersLoaded, e.Error);
+                        this.log.LogData(EventType.Exception, LogAction.UpdateAndPublish, e.Error);
                         MessageBox.Show(this, e.Error.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
 
+                    log.LogData(EventType.Event, LogAction.UpdateAndPublish);
                     MessageBox.Show("The BPF Form was successfully updated.", "BPF Form Updated !", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 },
                 ProgressChanged = e => { SetWorkingMessage(e.UserState.ToString()); }
@@ -193,6 +211,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
                     if (bpfForm == null || bpfForm.SystemForm.GetAttributeValue<string>("formxml").Contains("<hiddencontrols>"))
                     {
+                        log.LogData(EventType.Trace, LogAction.BpfNotSupportedYet);
                         throw new Exception("This BPF is not yet supported. We do hope it will be the case in a near future.");
                     }
                     else
@@ -235,6 +254,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
                 {
                     if (e.Error != null)
                     {
+                        log.LogData(EventType.Exception, LogAction.LoadingBpfFormDetails, e.Error);
                         MessageBox.Show(this, e.Error.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
@@ -242,8 +262,9 @@ namespace Carfup.XTBPlugins.PCF2BPF
                     var result = (Tuple<List<UserControl>, string>)e.Result;
 
                     panelStagesFields.Controls.AddRange(result.Item1.ToArray());
-
                     txbFormXml.Text = result.Item2;
+                    log.LogData(EventType.Event, LogAction.LoadingBpfFormDetails);
+                    
                 },
                 ProgressChanged = e => { SetWorkingMessage(e.UserState.ToString()); }
             });
@@ -258,6 +279,8 @@ namespace Carfup.XTBPlugins.PCF2BPF
             _currentAttribute.PcfConfiguration = pcfEditing.Clone();
 
             LoadParamToPanel(_currentAttribute.PcfConfiguration);
+
+            log.LogData(EventType.Event, LogAction.PossiblePcfLoaded);
         }
 
         private string GetTypeMapping(AttributeMetadata amd, bool fromAttrToPcf = true)
@@ -330,6 +353,10 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
         private void MyPluginControl_Load(object sender, EventArgs e)
         {
+            log = new LogUsageManager(this);
+            LoadSetting();
+            log.LogData(EventType.Event, LogAction.SettingLoaded);
+
             if (ConnectionDetail != null && ConnectionDetail.ServiceClient != null)
             {
                 // creating the controller
@@ -369,6 +396,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
                 {
                     if (e.Error != null)
                     {
+                        log.LogData(EventType.Exception, LogAction.BpfEntitiesLoaded, e.Error);
                         MessageBox.Show(this, e.Error.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
@@ -380,6 +408,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
                     }
 
                     cbBPFEntitiesList.Enabled = true;
+                    this.log.LogData(EventType.Event, LogAction.BpfEntitiesLoaded);
                 },
                 ProgressChanged = e => { SetWorkingMessage(e.UserState.ToString()); }
             });
@@ -395,7 +424,58 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
         private void tsbClose_Click(object sender, EventArgs e)
         {
+            this.log.LogData(EventType.Event, LogAction.PluginClosed);
+
+            // Saving settings for the next usage of plugin
+            SaveSettings();
+
+            // Making sure that all message are sent if stats are enabled
+            this.log.Flush();
+
             CloseTool();
+        }
+        public static string CurrentVersion
+        {
+            get
+            {
+                Assembly assembly = Assembly.GetExecutingAssembly();
+                FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
+                return fileVersionInfo.ProductVersion;
+            }
+        }
+
+        public void SaveSettings(bool closeApp = false)
+        {
+            if (closeApp)
+                log.LogData(EventType.Event, LogAction.SettingsSavedWhenClosing);
+            else
+                log.LogData(EventType.Event, LogAction.SettingsSaved);
+            SettingsManager.Instance.Save(typeof(PCF2BPF), settings);
+        }
+
+        private void LoadSetting()
+        {
+            try
+            {
+                if (SettingsManager.Instance.TryLoad<PluginSettings>(typeof(PCF2BPF), out settings))
+                {
+                    return;
+                }
+                else
+                    settings = new PluginSettings();
+            }
+            catch (InvalidOperationException ex)
+            {
+                log.LogData(EventType.Exception, LogAction.SettingLoaded, ex);
+            }
+
+            log.LogData(EventType.Event, LogAction.SettingLoaded);
+
+            if (!settings.AllowLogUsage.HasValue)
+            {
+                log.PromptToLog();
+                SaveSettings();
+            }
         }
     }
 }
