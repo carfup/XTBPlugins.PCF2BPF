@@ -6,9 +6,9 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("XTBPlugins.PCF2BPF")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("Manage PCF controls on your Business Process Flows in few clicks !")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("Clément Olivier & Tanguy Touzard")]
 [assembly: AssemblyProduct("Carfup.XTBPlugins.PCF2BPF")]
 [assembly: AssemblyCopyright("Copyright ©  2022")]
 [assembly: AssemblyTrademark("")]

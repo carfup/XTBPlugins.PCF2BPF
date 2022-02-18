@@ -30,7 +30,6 @@ namespace Carfup.XTBPlugins.PCF2BPF
         private void InitializeComponent()
         {
             this.toolStripMenu = new System.Windows.Forms.ToolStrip();
-            this.tsbClose = new System.Windows.Forms.ToolStripButton();
             this.tssSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.tabControl1 = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
@@ -54,6 +53,8 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.label4 = new System.Windows.Forms.Label();
             this.txbModifiedFormXml = new System.Windows.Forms.TextBox();
             this.label5 = new System.Windows.Forms.Label();
+            this.tsbClose = new System.Windows.Forms.ToolStripButton();
+            this.toolStripButton1 = new System.Windows.Forms.ToolStripButton();
             this.toolStripMenu.SuspendLayout();
             this.tabControl1.SuspendLayout();
             this.tabPage1.SuspendLayout();
@@ -72,36 +73,29 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.toolStripMenu.ImageScalingSize = new System.Drawing.Size(24, 24);
             this.toolStripMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
             this.tsbClose,
-            this.tssSeparator1});
+            this.tssSeparator1,
+            this.toolStripButton1});
             this.toolStripMenu.Location = new System.Drawing.Point(0, 0);
             this.toolStripMenu.Name = "toolStripMenu";
             this.toolStripMenu.Padding = new System.Windows.Forms.Padding(0, 0, 2, 0);
-            this.toolStripMenu.Size = new System.Drawing.Size(1413, 25);
+            this.toolStripMenu.Size = new System.Drawing.Size(1413, 31);
             this.toolStripMenu.TabIndex = 4;
             this.toolStripMenu.Text = "toolStrip1";
-            // 
-            // tsbClose
-            // 
-            this.tsbClose.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
-            this.tsbClose.Name = "tsbClose";
-            this.tsbClose.Size = new System.Drawing.Size(86, 22);
-            this.tsbClose.Text = "Close this tool";
-            this.tsbClose.Click += new System.EventHandler(this.tsbClose_Click);
             // 
             // tssSeparator1
             // 
             this.tssSeparator1.Name = "tssSeparator1";
-            this.tssSeparator1.Size = new System.Drawing.Size(6, 25);
+            this.tssSeparator1.Size = new System.Drawing.Size(6, 31);
             // 
             // tabControl1
             // 
             this.tabControl1.Controls.Add(this.tabPage1);
             this.tabControl1.Controls.Add(this.tabPage2);
             this.tabControl1.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tabControl1.Location = new System.Drawing.Point(0, 25);
+            this.tabControl1.Location = new System.Drawing.Point(0, 31);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(1413, 648);
+            this.tabControl1.Size = new System.Drawing.Size(1413, 642);
             this.tabControl1.TabIndex = 37;
             // 
             // tabPage1
@@ -112,7 +106,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.tabPage1.Location = new System.Drawing.Point(4, 22);
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage1.Size = new System.Drawing.Size(1405, 622);
+            this.tabPage1.Size = new System.Drawing.Size(1405, 616);
             this.tabPage1.TabIndex = 0;
             this.tabPage1.Text = "PCFs Configuration";
             // 
@@ -124,7 +118,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.panelRight.Dock = System.Windows.Forms.DockStyle.Fill;
             this.panelRight.Location = new System.Drawing.Point(416, 3);
             this.panelRight.Name = "panelRight";
-            this.panelRight.Size = new System.Drawing.Size(986, 616);
+            this.panelRight.Size = new System.Drawing.Size(986, 610);
             this.panelRight.TabIndex = 36;
             this.panelRight.Visible = false;
             // 
@@ -134,7 +128,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.panelParams.Location = new System.Drawing.Point(0, 63);
             this.panelParams.Name = "panelParams";
             this.panelParams.Padding = new System.Windows.Forms.Padding(10, 10, 0, 0);
-            this.panelParams.Size = new System.Drawing.Size(986, 553);
+            this.panelParams.Size = new System.Drawing.Size(986, 547);
             this.panelParams.TabIndex = 43;
             // 
             // panel4
@@ -209,7 +203,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.panel2.Dock = System.Windows.Forms.DockStyle.Left;
             this.panel2.Location = new System.Drawing.Point(3, 3);
             this.panel2.Name = "panel2";
-            this.panel2.Size = new System.Drawing.Size(413, 616);
+            this.panel2.Size = new System.Drawing.Size(413, 610);
             this.panel2.TabIndex = 35;
             // 
             // panelStagesFields
@@ -220,13 +214,13 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.panelStagesFields.Location = new System.Drawing.Point(0, 99);
             this.panelStagesFields.Name = "panelStagesFields";
             this.panelStagesFields.Padding = new System.Windows.Forms.Padding(0, 5, 0, 0);
-            this.panelStagesFields.Size = new System.Drawing.Size(413, 459);
+            this.panelStagesFields.Size = new System.Drawing.Size(413, 453);
             this.panelStagesFields.TabIndex = 37;
             // 
             // btnUpdatePublish
             // 
             this.btnUpdatePublish.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.btnUpdatePublish.Location = new System.Drawing.Point(0, 558);
+            this.btnUpdatePublish.Location = new System.Drawing.Point(0, 552);
             this.btnUpdatePublish.Name = "btnUpdatePublish";
             this.btnUpdatePublish.Size = new System.Drawing.Size(413, 58);
             this.btnUpdatePublish.TabIndex = 36;
@@ -275,7 +269,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.tabPage2.Location = new System.Drawing.Point(4, 22);
             this.tabPage2.Name = "tabPage2";
             this.tabPage2.Padding = new System.Windows.Forms.Padding(3);
-            this.tabPage2.Size = new System.Drawing.Size(1405, 622);
+            this.tabPage2.Size = new System.Drawing.Size(1405, 616);
             this.tabPage2.TabIndex = 1;
             this.tabPage2.Text = "Xml Details";
             // 
@@ -295,7 +289,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             // 
             this.splitContainer1.Panel2.Controls.Add(this.txbModifiedFormXml);
             this.splitContainer1.Panel2.Controls.Add(this.label5);
-            this.splitContainer1.Size = new System.Drawing.Size(1399, 616);
+            this.splitContainer1.Size = new System.Drawing.Size(1399, 610);
             this.splitContainer1.SplitterDistance = 642;
             this.splitContainer1.SplitterWidth = 3;
             this.splitContainer1.TabIndex = 21;
@@ -307,7 +301,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.txbFormXml.Multiline = true;
             this.txbFormXml.Name = "txbFormXml";
             this.txbFormXml.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.txbFormXml.Size = new System.Drawing.Size(642, 603);
+            this.txbFormXml.Size = new System.Drawing.Size(642, 597);
             this.txbFormXml.TabIndex = 20;
             // 
             // label4
@@ -327,7 +321,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.txbModifiedFormXml.Multiline = true;
             this.txbModifiedFormXml.Name = "txbModifiedFormXml";
             this.txbModifiedFormXml.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.txbModifiedFormXml.Size = new System.Drawing.Size(754, 603);
+            this.txbModifiedFormXml.Size = new System.Drawing.Size(754, 597);
             this.txbModifiedFormXml.TabIndex = 22;
             // 
             // label5
@@ -339,6 +333,25 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.label5.Size = new System.Drawing.Size(29, 13);
             this.label5.TabIndex = 21;
             this.label5.Text = "After";
+            // 
+            // tsbClose
+            // 
+            this.tsbClose.Image = global::Carfup.XTBPlugins.Properties.Resources.close;
+            this.tsbClose.ImageAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.tsbClose.Name = "tsbClose";
+            this.tsbClose.Size = new System.Drawing.Size(110, 28);
+            this.tsbClose.Text = "Close this tool";
+            this.tsbClose.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.tsbClose.Click += new System.EventHandler(this.tsbClose_Click);
+            // 
+            // toolStripButton1
+            // 
+            this.toolStripButton1.Image = global::Carfup.XTBPlugins.Properties.Resources.load;
+            this.toolStripButton1.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.toolStripButton1.Name = "toolStripButton1";
+            this.toolStripButton1.Size = new System.Drawing.Size(89, 28);
+            this.toolStripButton1.Text = "Load BPFs";
+            this.toolStripButton1.Click += new System.EventHandler(this.btnLoadEntities_Click);
             // 
             // PCF2BPF
             // 
@@ -396,5 +409,6 @@ namespace Carfup.XTBPlugins.PCF2BPF
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.Panel panelStagesFields;
         private System.Windows.Forms.Label lblCurrentBpfField;
+        private System.Windows.Forms.ToolStripButton toolStripButton1;
     }
 }
