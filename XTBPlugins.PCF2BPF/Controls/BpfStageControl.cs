@@ -28,7 +28,7 @@ namespace Carfup.XTBPlugins.Controls
                     ShowAlways = true,
                     ToolTipTitle = "Why do I see this?"
                 };
-                descToolTip.SetToolTip(pbWarning, "Your BPF definition does not contain title for this stage. Consider updating the PBF definition to force title display");
+                descToolTip.SetToolTip(pbWarning, "Your BPF definition does not contain title for this stage. Consider updating the BPF definition to force title display.");
             }
         }
     }
