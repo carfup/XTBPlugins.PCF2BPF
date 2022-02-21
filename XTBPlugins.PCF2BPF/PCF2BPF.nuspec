@@ -22,6 +22,6 @@ Load all BPF entities, load available PCF within the environment, select the BPF
     </dependencies>
   </metadata>
   <files>
-	  <file src="bin\Release\Carfup.XTBPlugins.*.dll" target="lib\net462\Plugins" />
+	  <file src="bin\Release\Merged\Carfup.XTBPlugins.*.dll" target="lib\net462\Plugins" />
   </files>
 </package>
