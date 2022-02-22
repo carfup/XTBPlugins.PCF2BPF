@@ -73,7 +73,7 @@ namespace Carfup.XTBPlugins.Controls
 
         private void cbValue_SelectedIndexChanged(object sender, EventArgs e)
         {
-            param.value = this.param.ofType == "Enum" ? ((PCFEnumValue)cbValue.SelectedItem).Value : cbValue.SelectedText;
+            param.value = this.param.ofType == "Enum" ? ((PCFEnumValue)cbValue.SelectedItem).Value : cbValue.SelectedItem;
         }
 
         private void ckbStatic_CheckedChanged(object sender, EventArgs e)
