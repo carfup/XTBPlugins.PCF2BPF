@@ -36,7 +36,8 @@ namespace Carfup.XTBPlugins.AppCode
         {
             foreach (XmlNode controlNode in _tabNode.SelectNodes(".//control"))
             {
-                if (controlNode.Attributes["datafieldname"]?.Value.StartsWith("_") ?? false) continue;
+                if ((controlNode.Attributes["id"]?.Value.EndsWith("_flowstep") ?? false) || 
+                    (controlNode.Attributes["id"]?.Value.EndsWith("_actionstep") ?? false)) continue;
 
                 Attributes.Add(new FormAttribute(controlNode));
             }
