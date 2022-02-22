@@ -69,26 +69,26 @@ namespace Carfup.XTBPlugins.AppCode
             }
 
             // Node controlDescriptionNode
-            var controlDescriptionNode = _controlNode.OwnerDocument.CreateElement("controlDescription");
-            controlDescriptionsNode.AppendChild(controlDescriptionNode);
+            _controlDescriptionNode = _controlNode.OwnerDocument.CreateElement("controlDescription");
+            controlDescriptionsNode.AppendChild(_controlDescriptionNode);
 
             var forControlAttr = _controlNode.OwnerDocument.CreateAttribute("forControl");
             forControlAttr.Value = _uniqueId.ToString("B");
-            controlDescriptionNode.Attributes.Append(forControlAttr);
+            _controlDescriptionNode.Attributes.Append(forControlAttr);
 
             // Node customControl
-            _controlDescriptionNode = _controlNode.OwnerDocument.CreateElement("customControl");
+            var customControlNode = _controlNode.OwnerDocument.CreateElement("customControl");
             var nameAttr = _controlNode.OwnerDocument.CreateAttribute("name");
             nameAttr.Value = pcf.Name;
             var formFactorAttr = _controlNode.OwnerDocument.CreateAttribute("formFactor");
             formFactorAttr.Value = "2";
-            _controlDescriptionNode.Attributes.Append(nameAttr);
-            _controlDescriptionNode.Attributes.Append(formFactorAttr);
-            controlDescriptionNode.AppendChild(_controlDescriptionNode);
+            customControlNode.Attributes.Append(nameAttr);
+            customControlNode.Attributes.Append(formFactorAttr);
+            _controlDescriptionNode.AppendChild(customControlNode);
 
             // Node parameters
             var parametersNode = _controlNode.OwnerDocument.CreateElement("parameters");
-            _controlDescriptionNode.AppendChild(parametersNode);
+            customControlNode.AppendChild(parametersNode);
 
             foreach (var param in pcf.Parameters)
             {
