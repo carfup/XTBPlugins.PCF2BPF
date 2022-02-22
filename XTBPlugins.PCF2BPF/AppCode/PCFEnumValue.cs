@@ -22,11 +22,11 @@ namespace Carfup.XTBPlugins.AppCode
             return Label ?? Name;
         }
 
-        internal void LoadLabel(PCFDetails pcf, IOrganizationService service)
+        internal void LoadLabel(PCFDetails pcf, IOrganizationService service, int lcid)
         {
             pcf.Resxes.ForEach(r => r.Load(service));
 
-            Label = pcf.Resxes.FirstOrDefault()?.GetText(Label);
+            Label = pcf.Resxes.FirstOrDefault(r => r.Lcid == lcid)?.GetText(Label);
         }
     }
 }

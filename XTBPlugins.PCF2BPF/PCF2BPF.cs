@@ -457,13 +457,13 @@ namespace Carfup.XTBPlugins.PCF2BPF
                 {
                     bpfEntitiesList = this.controllerManager.dataManager.RetrieveBPFEntities();
 
-                    bw.ReportProgress(0, "Loading available PCF in your environment...");
-
-                    pcfAvailableDetailsList = this.controllerManager.dataManager.RetrievePcfList().Select(pcf => PCFDetails.Load(pcf)).ToList();
-
                     bw.ReportProgress(0, "Loading current user language...");
 
                     userLcid = this.controllerManager.dataManager.GetUserLcid();
+
+                    bw.ReportProgress(0, "Loading available PCF in your environment...");
+
+                    pcfAvailableDetailsList = this.controllerManager.dataManager.RetrievePcfList().Select(pcf => PCFDetails.Load(pcf, userLcid)).ToList();
                 },
                 PostWorkCallBack = e =>
                 {

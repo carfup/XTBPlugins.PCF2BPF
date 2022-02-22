@@ -31,7 +31,7 @@ namespace Carfup.XTBPlugins.AppCode
         public List<PCFTypeGroup> TypeGroups { get; set; }
         internal List<PCFResx> Resxes { get; set; }
 
-        public static PCFDetails Load(Entity pcf)
+        public static PCFDetails Load(Entity pcf, int userLcid)
         {
             var doc = new XmlDocument();
             doc.LoadXml(pcf.GetAttributeValue<string>("manifest"));
@@ -68,7 +68,7 @@ namespace Carfup.XTBPlugins.AppCode
                 var complexTypes = new List<string>();
                 if (prop.Attributes["of-type"]?.Value == "Enum")
                 {
-                    complexValues = prop.ChildNodes.Cast<XmlNode>().Select(x => new PCFEnumValue(x.Attributes["name"].Value, pcfResxes.FirstOrDefault()?.GetText(x.Attributes["display-name-key"].Value), x.InnerText)).ToList();
+                    complexValues = prop.ChildNodes.Cast<XmlNode>().Select(x => new PCFEnumValue(x.Attributes["name"].Value, pcfResxes.FirstOrDefault(r => r.Lcid == userLcid)?.GetText(x.Attributes["display-name-key"].Value), x.InnerText)).ToList();
                 }
 
                 if (prop.Attributes["of-type-group"]?.Value != null)

@@ -199,6 +199,7 @@ namespace Carfup.XTBPlugins.AppCode
                     PcfConfiguration.Parameters.Add(new PCFParameter()
                     {
                         name = property.Name,
+                        displayname = paramManifestDetails.displayname,
                         value = property.InnerText,
                         isStatic = property.Attributes["static"] == null ? false : true,
                         ofType = property.Attributes["type"]?.Value,

@@ -14,6 +14,7 @@ namespace Carfup.XTBPlugins.Controls
         private EntityMetadata emd;
         private List<string> fields = new List<string>();
         private bool isPrimaryField = false;
+        private int lcid;
         private Dictionary<string, string> mappingType;
         private PCFParameter param;
         private PCFDetails pcf;
@@ -29,6 +30,7 @@ namespace Carfup.XTBPlugins.Controls
             this.param = param;
             this.emd = emd;
             this.isPrimaryField = isPrimaryField;
+            this.lcid = lcid;
 
             var name = param.displayname != null && pcf.Resxes.FirstOrDefault(r => r.Lcid == lcid) != null ? pcf.Resxes.FirstOrDefault(r => r.Lcid == lcid)?.GetText(param.displayname) : param.name;
             var description = pcf.Resxes.FirstOrDefault(r => r.Lcid == lcid)?.GetText(param.description) ?? param.description;
@@ -83,7 +85,7 @@ namespace Carfup.XTBPlugins.Controls
         {
             if (this.param.ofType == "Enum")
             {
-                param.ComplexValues.ForEach((a) => a.LoadLabel(pcf, service));
+                param.ComplexValues.ForEach((a) => a.LoadLabel(pcf, service, lcid));
 
                 cbValue.Items.Clear();
                 cbValue.Items.AddRange(param.ComplexValues.ToArray());
