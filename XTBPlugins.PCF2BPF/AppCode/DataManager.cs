@@ -51,11 +51,13 @@ namespace Carfup.XTBPlugins.AppCode
 
         public List<Entity> RetrievePcfList()
         {
-            return this.connection.serviceClient.RetrieveMultiple(new QueryExpression()
+
+            return new List<Entity>();
+            /*return this.connection.serviceClient.RetrieveMultiple(new QueryExpression()
             {
                 EntityName = "customcontrol",
-                ColumnSet = new ColumnSet("compatibledatatypes", "manifest", "name")
-            }).Entities.ToList();
+                ColumnSet = new ColumnSet("compatibledatatypes", "manifest", "name"),
+            }).Entities.ToList();*/
         }
 
         internal List<EntityMetadata> GetMetadata(IEnumerable<string> rels)
