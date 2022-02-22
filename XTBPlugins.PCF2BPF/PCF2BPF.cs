@@ -92,7 +92,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             cbPossiblePCFs.SelectedText = attribute.PcfConfiguration.Name;
             cbPossiblePCFs.Enabled = false;
 
-            pcfEditing = bpfForm.Tabs.SelectMany(x => x.Attributes).FirstOrDefault(y => y.UniqueId == attribute.PcfConfiguration.Id)?.PcfConfiguration;
+            pcfEditing = bpfForm.Tabs.SelectMany(x => x.Attributes).FirstOrDefault(y => y.UniqueId == attribute.UniqueId)?.PcfConfiguration;
             _currentAttribute = attribute;
 
             LoadParamToPanel(attribute.PcfConfiguration);
@@ -169,7 +169,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
         {
             var requiredFieldsEmpty = pcfEditing?.Parameters.Any(x => x.required && string.IsNullOrEmpty(x.value?.ToString()));
 
-            if (requiredFieldsEmpty.Value)
+            if (requiredFieldsEmpty ?? false)
             {
                 MessageBox.Show("One or more required fields are empty, please fill them.");
                 return;
