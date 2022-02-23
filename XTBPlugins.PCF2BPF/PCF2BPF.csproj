@@ -325,6 +325,7 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <None Include="PCF2BPF.nuspec" />
     <None Include="Resources\add.png" />
   </ItemGroup>
   <ItemGroup>

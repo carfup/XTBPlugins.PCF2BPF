@@ -463,7 +463,11 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
                     bw.ReportProgress(0, "Loading available PCF in your environment...");
 
-                    pcfAvailableDetailsList = this.controllerManager.dataManager.RetrievePcfList()?.Select(pcf => PCFDetails.Load(pcf, userLcid)).ToList();
+                    var pcflist = this.controllerManager.dataManager.RetrievePcfList();
+
+                    foreach(var pcf in pcflist)
+                        pcfAvailableDetailsList.Add(PCFDetails.Load(pcf, userLcid));
+                    
                 },
                 PostWorkCallBack = e =>
                 {

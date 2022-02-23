@@ -95,7 +95,7 @@ namespace Carfup.XTBPlugins.AppCode
             {
                 Name = pcf.GetAttributeValue<string>("name"),
                 Manifest = pcf.GetAttributeValue<string>("manifest"),
-                CompatibleDataTypes = pcf.GetAttributeValue<string>("compatibledatatypes").Split(',').ToList(),
+                CompatibleDataTypes = pcf.GetAttributeValue<string>("compatibledatatypes")?.Split(',').ToList(),
                 Parameters = pcfParams,
                 TypeGroups = typeGroupValues,
                 Resxes = pcfResxes,
