@@ -224,6 +224,8 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
         private void cbBPFEntitiesList_SelectedIndexChanged(object sender, EventArgs evt)
         {
+            if (cbBPFEntitiesList.SelectedItem == null) return;
+
             var selectedBPFEntity = bpfEntitiesList.First(x => x.GetAttributeValue<string>("name") == cbBPFEntitiesList.SelectedItem.ToString());
             var bpfPrimaryEntityLogicalName = selectedBPFEntity.GetAttributeValue<string>("primaryentity");
             var bpfEntityLogicalName = selectedBPFEntity.GetAttributeValue<string>("uniquename");
@@ -450,6 +452,9 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
         private void PrivateLoadEntities()
         {
+            panelStagesFields.Controls.Clear();
+            cbBPFEntitiesList.SelectedItem = null;
+
             WorkAsync(new WorkAsyncInfo
             {
                 Message = "Loading BPF Entities...",
@@ -465,6 +470,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
                     var pcflist = this.controllerManager.dataManager.RetrievePcfList();
 
+                    pcfAvailableDetailsList.Clear();
                     foreach(var pcf in pcflist)
                         pcfAvailableDetailsList.Add(PCFDetails.Load(pcf, userLcid));
                     
