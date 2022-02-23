@@ -10,7 +10,7 @@ namespace Carfup.XTBPlugins.AppCode
     public class FormAttribute
     {
         private readonly XmlNode _controlNode;
-        private XmlNode _customControlNode;
+        private XmlNode _controlDescriptionNode;
         private string _displayName;
         private string _entityDisplayName;
         private string _entityLogicalName;
@@ -24,8 +24,8 @@ namespace Carfup.XTBPlugins.AppCode
 
         public AttributeMetadata Amd { get; private set; }
         public BpfFieldControl Control { get; set; }
-        public string CustomControlName => _customControlNode?.FirstChild?.Attributes["name"]?.Value;
-        public XmlNode CustomControlNode => _customControlNode;
+        public string CustomControlName => _controlDescriptionNode?.SelectSingleNode("customControl[@name]")?.Attributes["name"]?.Value;
+        public XmlNode CustomControlNode => _controlDescriptionNode;
         public string DisplayName => _displayName;
         public EntityMetadata Emd { get; private set; }
         public string EntityDisplayName => _entityDisplayName;
@@ -46,7 +46,7 @@ namespace Carfup.XTBPlugins.AppCode
             }
         }
 
-        public string Relationship => _controlNode.Attributes["relationship"].Value;
+        public string Relationship => _controlNode.Attributes["relationship"]?.Value;
         public Guid UniqueId => _uniqueId;
 
         #region CustomControl Management
@@ -69,26 +69,26 @@ namespace Carfup.XTBPlugins.AppCode
             }
 
             // Node controlDescriptionNode
-            var controlDescriptionNode = _controlNode.OwnerDocument.CreateElement("controlDescription");
-            controlDescriptionsNode.AppendChild(controlDescriptionNode);
+            _controlDescriptionNode = _controlNode.OwnerDocument.CreateElement("controlDescription");
+            controlDescriptionsNode.AppendChild(_controlDescriptionNode);
 
             var forControlAttr = _controlNode.OwnerDocument.CreateAttribute("forControl");
             forControlAttr.Value = _uniqueId.ToString("B");
-            controlDescriptionNode.Attributes.Append(forControlAttr);
+            _controlDescriptionNode.Attributes.Append(forControlAttr);
 
             // Node customControl
-            _customControlNode = _controlNode.OwnerDocument.CreateElement("customControl");
+            var customControlNode = _controlNode.OwnerDocument.CreateElement("customControl");
             var nameAttr = _controlNode.OwnerDocument.CreateAttribute("name");
             nameAttr.Value = pcf.Name;
             var formFactorAttr = _controlNode.OwnerDocument.CreateAttribute("formFactor");
             formFactorAttr.Value = "2";
-            _customControlNode.Attributes.Append(nameAttr);
-            _customControlNode.Attributes.Append(formFactorAttr);
-            controlDescriptionNode.AppendChild(_customControlNode);
+            customControlNode.Attributes.Append(nameAttr);
+            customControlNode.Attributes.Append(formFactorAttr);
+            _controlDescriptionNode.AppendChild(customControlNode);
 
             // Node parameters
             var parametersNode = _controlNode.OwnerDocument.CreateElement("parameters");
-            _customControlNode.AppendChild(parametersNode);
+            customControlNode.AppendChild(parametersNode);
 
             foreach (var param in pcf.Parameters)
             {
@@ -119,7 +119,7 @@ namespace Carfup.XTBPlugins.AppCode
 
         public void EditCustomControl(PCFDetails pcf)
         {
-            var parametersNode = _customControlNode.SelectSingleNode(".//parameters");
+            var parametersNode = _controlDescriptionNode.SelectSingleNode("customControl[@formFactor=\"2\"]").SelectSingleNode(".//parameters");
             if (parametersNode != null)
             {
                 foreach (var param in pcf.Parameters)
@@ -158,7 +158,7 @@ namespace Carfup.XTBPlugins.AppCode
             if (CustomControlNode != null)
             {
                 CustomControlNode.ParentNode.RemoveChild(CustomControlNode);
-                _customControlNode = null;
+                _controlDescriptionNode = null;
             }
 
             Control.showHideButtons();
@@ -169,7 +169,7 @@ namespace Carfup.XTBPlugins.AppCode
         public void Initialize(List<PCFDetails> pcfAvailableDetailsList)
         {
             _uniqueId = _controlNode.Attributes["uniqueid"] != null ? new Guid(_controlNode.Attributes["uniqueid"].Value) : Guid.Empty;
-            _customControlNode = _controlNode.OwnerDocument.SelectSingleNode($"//controlDescription[@forControl=\"{UniqueId:B}\"]");
+            _controlDescriptionNode = _controlNode.OwnerDocument.SelectSingleNode($"//controlDescription[@forControl=\"{UniqueId:B}\"]");
             var pcfDefinition = pcfAvailableDetailsList.FirstOrDefault(x => x.Name == CustomControlName);
 
             if (_uniqueId != Guid.Empty && CustomControlNode == null)
@@ -177,7 +177,7 @@ namespace Carfup.XTBPlugins.AppCode
                 _uniqueId = Guid.Empty;
             }
 
-            if (_customControlNode != null)
+            if (_controlDescriptionNode != null && pcfDefinition != null)
             {
                 PcfConfiguration = new PCFDetails
                 {
@@ -191,13 +191,15 @@ namespace Carfup.XTBPlugins.AppCode
                     Parameters = new List<PCFParameter>()
                 };
 
-                foreach (XmlNode property in _customControlNode.SelectNodes(".//parameters/*"))
+                foreach (XmlNode property in _controlDescriptionNode.SelectSingleNode("customControl[@formFactor=\"2\"]").SelectNodes("./parameters/*"))
                 {
-                    var paramManifestDetails = pcfDefinition.Parameters.First(x => x.name == property.Name);
+                    var paramManifestDetails = pcfDefinition.Parameters.FirstOrDefault(x => x.name == property.Name);
+                    if (paramManifestDetails == null) continue;
 
                     PcfConfiguration.Parameters.Add(new PCFParameter()
                     {
                         name = property.Name,
+                        displayname = paramManifestDetails.displayname,
                         value = property.InnerText,
                         isStatic = property.Attributes["static"] == null ? false : true,
                         ofType = property.Attributes["type"]?.Value,

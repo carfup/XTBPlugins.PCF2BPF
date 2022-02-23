@@ -58,7 +58,8 @@ namespace Carfup.XTBPlugins.AppCode
             {
                 foreach (var attr in tab.Attributes)
                 {
-                    var emd = emds.First(e => e.OneToManyRelationships.Any(r => r.SchemaName == attr.Relationship));
+                    var emd = emds.FirstOrDefault(e => e.OneToManyRelationships.Any(r => r.SchemaName == attr.Relationship));
+                    if (emd == null) continue;
                     var amd = emd.Attributes.First(a => a.LogicalName == attr.LogicalName);
 
                     attr.SetMetadata(emd, amd);

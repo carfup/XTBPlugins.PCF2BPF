@@ -31,7 +31,7 @@ namespace Carfup.XTBPlugins.AppCode
         public List<PCFTypeGroup> TypeGroups { get; set; }
         internal List<PCFResx> Resxes { get; set; }
 
-        public static PCFDetails Load(Entity pcf)
+        public static PCFDetails Load(Entity pcf, int userLcid)
         {
             var doc = new XmlDocument();
             doc.LoadXml(pcf.GetAttributeValue<string>("manifest"));
@@ -45,7 +45,7 @@ namespace Carfup.XTBPlugins.AppCode
                 foreach (XmlNode type in typeg.SelectNodes("type"))
                     typeGroupValues.Add(new PCFTypeGroup
                     {
-                        name = typeg.Attributes["name"].Value,
+                        name = typeg.Attributes["name"]?.Value,
                         type = type.InnerText,
                     });
             }
@@ -54,9 +54,9 @@ namespace Carfup.XTBPlugins.AppCode
             var resxes = doc.SelectNodes("//resx");
             foreach (XmlNode resx in resxes)
             {
-                var pcfResx = new PCFResx(resx.Attributes["path"].Value,
-                    doc.SelectSingleNode("//control").Attributes["namespace"].Value,
-                    doc.SelectSingleNode("//control").Attributes["constructor"].Value);
+                var pcfResx = new PCFResx(resx.Attributes["path"]?.Value,
+                    doc.SelectSingleNode("//control").Attributes["namespace"]?.Value,
+                    doc.SelectSingleNode("//control").Attributes["constructor"]?.Value);
 
                 pcfResxes.Add(pcfResx);
             }
@@ -68,7 +68,7 @@ namespace Carfup.XTBPlugins.AppCode
                 var complexTypes = new List<string>();
                 if (prop.Attributes["of-type"]?.Value == "Enum")
                 {
-                    complexValues = prop.ChildNodes.Cast<XmlNode>().Select(x => new PCFEnumValue(x.Attributes["name"].Value, pcfResxes.FirstOrDefault()?.GetText(x.Attributes["display-name-key"].Value), x.InnerText)).ToList();
+                    complexValues = prop.ChildNodes.Cast<XmlNode>().Select(x => new PCFEnumValue(x.Attributes["name"]?.Value, pcfResxes.FirstOrDefault(r => r.Lcid == userLcid)?.GetText(x.Attributes["display-name-key"]?.Value), x.InnerText)).ToList();
                 }
 
                 if (prop.Attributes["of-type-group"]?.Value != null)
@@ -95,7 +95,7 @@ namespace Carfup.XTBPlugins.AppCode
             {
                 Name = pcf.GetAttributeValue<string>("name"),
                 Manifest = pcf.GetAttributeValue<string>("manifest"),
-                CompatibleDataTypes = pcf.GetAttributeValue<string>("compatibledatatypes").Split(',').ToList(),
+                CompatibleDataTypes = pcf.GetAttributeValue<string>("compatibledatatypes")?.Split(',').ToList(),
                 Parameters = pcfParams,
                 TypeGroups = typeGroupValues,
                 Resxes = pcfResxes,
