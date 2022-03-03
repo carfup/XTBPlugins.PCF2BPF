@@ -103,20 +103,27 @@ namespace Carfup.XTBPlugins.AppCode
             };
         }
 
-        public PCFDetails Clone()
+        public PCFDetails Clone(bool resetValues = true)
         {
+            var clonedParams = new List<PCFParameter>();
             var cloned = new PCFDetails
             {
                 AttachedField = AttachedField,
                 ControlDescription = ControlDescription,
                 Manifest = Manifest,
                 Name = Name,
-                Parameters = Parameters.ToList(),
-                TypeGroups = TypeGroups.ToList(),
-                Resxes = Resxes.ToList()
+                Parameters = clonedParams,
+                TypeGroups = TypeGroups?.ToList(),
+                Resxes = Resxes?.ToList()
             };
 
-            cloned.Parameters.ForEach((parameter) => { parameter.value = null; });
+            foreach(var param in Parameters)
+            {
+                clonedParams.Add(param.Clone());
+            }
+
+            if(resetValues)
+                clonedParams.ForEach((parameter) => { parameter.value = null; });
 
             return cloned;
         }

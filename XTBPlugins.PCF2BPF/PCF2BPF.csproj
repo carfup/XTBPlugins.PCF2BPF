@@ -130,6 +130,7 @@
     <Reference Include="NuGet.Versioning, Version=5.9.1.11, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\NuGet.Versioning.5.9.1\lib\net472\NuGet.Versioning.dll</HintPath>
     </Reference>
+    <Reference Include="PresentationCore" />
     <Reference Include="ScintillaNET, Version=3.6.3.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\jacobslusser.ScintillaNET.3.6.3\lib\net40\ScintillaNET.dll</HintPath>
     </Reference>
@@ -207,6 +208,7 @@
     <Reference Include="System.ValueTuple, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
       <HintPath>..\packages\System.ValueTuple.4.5.0\lib\net47\System.ValueTuple.dll</HintPath>
     </Reference>
+    <Reference Include="System.Xaml" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -235,12 +237,15 @@
     <Reference Include="System.Workflow.Activities" />
     <Reference Include="System.Workflow.ComponentModel" />
     <Reference Include="System.Workflow.Runtime" />
+    <Reference Include="UIAutomationProvider" />
     <Reference Include="WeifenLuo.WinFormsUI.Docking, Version=3.0.6.0, Culture=neutral, PublicKeyToken=5cded1a1a0a7b481, processorArchitecture=MSIL">
       <HintPath>..\packages\DockPanelSuite.3.0.6\lib\net40\WeifenLuo.WinFormsUI.Docking.dll</HintPath>
     </Reference>
     <Reference Include="WeifenLuo.WinFormsUI.Docking.ThemeVS2015, Version=3.0.6.0, Culture=neutral, PublicKeyToken=5cded1a1a0a7b481, processorArchitecture=MSIL">
       <HintPath>..\packages\DockPanelSuite.ThemeVS2015.3.0.6\lib\net40\WeifenLuo.WinFormsUI.Docking.ThemeVS2015.dll</HintPath>
     </Reference>
+    <Reference Include="WindowsBase" />
+    <Reference Include="WindowsFormsIntegration" />
     <Reference Include="XrmToolBox, Version=1.2021.12.53, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\XrmToolBoxPackage.1.2021.12.53\lib\net462\XrmToolBox.exe</HintPath>
     </Reference>
@@ -255,6 +260,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AppCode\FormFactorActionEventArgs.cs" />
     <Compile Include="AppCode\BpfFieldControlActionEventArgs.cs" />
     <Compile Include="AppCode\ControllerManager.cs" />
     <Compile Include="AppCode\DataManager.cs" />
@@ -279,6 +285,12 @@
     </Compile>
     <Compile Include="Controls\BpfStageControl.Designer.cs">
       <DependentUpon>BpfStageControl.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Controls\FormFactorControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Controls\FormFactorControl.Designer.cs">
+      <DependentUpon>FormFactorControl.cs</DependentUpon>
     </Compile>
     <Compile Include="Controls\PcfControlParameter.cs">
       <SubType>UserControl</SubType>
@@ -313,6 +325,9 @@
     <EmbeddedResource Include="Controls\BpfStageControl.resx">
       <DependentUpon>BpfStageControl.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Controls\FormFactorControl.resx">
+      <DependentUpon>FormFactorControl.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Controls\PcfControlParameter.resx">
       <DependentUpon>PcfControlParameter.cs</DependentUpon>
     </EmbeddedResource>
@@ -342,6 +357,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\load.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\right.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

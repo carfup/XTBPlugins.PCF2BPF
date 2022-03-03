@@ -22,8 +22,8 @@ namespace Carfup.XTBPlugins.Controls
 
         public void pbAdd_Click(object sender, EventArgs e)
         {
-            OnActionRequested?.Invoke(this, new BpfFieldControlActionEventArgs(BpfFieldControlAction.Add));
-            showHideButtons();
+            //OnActionRequested?.Invoke(this, new BpfFieldControlActionEventArgs(BpfFieldControlAction.Add));
+            //showHideButtons();
         }
 
         public void showHideButtons()
@@ -35,17 +35,22 @@ namespace Carfup.XTBPlugins.Controls
 
         private void BpfFieldControl_Load(object sender, EventArgs e)
         {
-            showHideButtons();
+            //showHideButtons();
         }
 
         private void pbDelete_Click(object sender, EventArgs e)
         {
-            OnActionRequested?.Invoke(this, new BpfFieldControlActionEventArgs(BpfFieldControlAction.Remove));
+            //OnActionRequested?.Invoke(this, new BpfFieldControlActionEventArgs(BpfFieldControlAction.Remove));
         }
 
         private void pbModify_Click(object sender, EventArgs e)
         {
-            OnActionRequested?.Invoke(this, new BpfFieldControlActionEventArgs(BpfFieldControlAction.Edit));
+            //OnActionRequested?.Invoke(this, new BpfFieldControlActionEventArgs(BpfFieldControlAction.Edit));
+        }
+
+        private void pbGoField_Click(object sender, EventArgs e)
+        {
+            OnActionRequested?.Invoke(this, new BpfFieldControlActionEventArgs(BpfFieldControlAction.Go));
         }
     }
 }

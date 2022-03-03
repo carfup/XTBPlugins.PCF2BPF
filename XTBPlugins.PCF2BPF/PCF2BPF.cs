@@ -16,19 +16,14 @@ using XrmToolBox.Extensibility.Interfaces;
 
 namespace Carfup.XTBPlugins.PCF2BPF
 {
-    public enum actions
-    {
-        none,
-        add,
-        modify,
-        delete
-    }
+    
 
     public partial class PCF2BPF : PluginControlBase, IGitHubPlugin, IPayPalPlugin
     {
         public LogUsageManager log = null;
         internal PluginSettings settings = new PluginSettings();
         private FormAttribute _currentAttribute;
+        private int _formFactor = 2;
         private actions actionInProgress = actions.none;
         private List<Entity> bpfEntitiesList = new List<Entity>();
         private FormXml bpfForm = null;
@@ -70,32 +65,31 @@ namespace Carfup.XTBPlugins.PCF2BPF
             SettingsManager.Instance.Save(typeof(PCF2BPF), settings);
         }
 
-        public void SetAddPcf(FormAttribute attribute)
+        public void SetAddPcf(FormAttribute attribute, int formFactor)
         {
             actionInProgress = actions.add;
             panelParams.Controls.Clear();
 
-            attribute.PcfConfiguration = null;
+            attribute.PcfConfiguration[formFactor] = null;
 
             SetPossiblePCf(attribute);
         }
 
-        public void SetExistingPCFDetails(FormAttribute attribute)
+        public void SetExistingPCFDetails(FormAttribute attribute, int formFactor)
         {
             actionInProgress = actions.modify;
 
             ResetPossiblePCF();
             SetPossiblePCf(attribute);
-
             // Auto select the dropdown list here & disable it
 
-            cbPossiblePCFs.SelectedText = attribute.PcfConfiguration.Name;
+            cbPossiblePCFs.SelectedText = attribute.PcfConfiguration[formFactor].Name;
             cbPossiblePCFs.Enabled = false;
 
-            pcfEditing = bpfForm.Tabs.SelectMany(x => x.Attributes).FirstOrDefault(y => y.UniqueId == attribute.UniqueId)?.PcfConfiguration;
+            pcfEditing = bpfForm.Tabs.SelectMany(x => x.Attributes).FirstOrDefault(y => y.UniqueId == attribute.UniqueId)?.PcfConfiguration[formFactor];
             _currentAttribute = attribute;
 
-            LoadParamToPanel(attribute.PcfConfiguration);
+            LoadParamToPanel(attribute.PcfConfiguration[formFactor]);
             log.LogData(EventType.Event, LogAction.ExistingPcfDetailsLoaded);
         }
 
@@ -133,23 +127,22 @@ namespace Carfup.XTBPlugins.PCF2BPF
             base.UpdateConnection(newService, detail, actionName, parameter);
         }
 
-        private void BpfFieldCtrl_OnActionRequested(object sender, BpfFieldControlActionEventArgs e)
+        private void FormFactorCtrl_OnActionRequested(object sender, FormFactorActionEventArgs e)
         {
-            var attribute = (FormAttribute)((BpfFieldControl)sender).Tag;
+            var attribute = (FormAttribute)((FormFactorControl)sender).Tag;
 
             lblCurrentBpfField.Text = attribute.ToString();
+            _formFactor = (int)e.FormFactor;
 
             switch (e.Action)
             {
-                case BpfFieldControlAction.Add:
-
-                    if (_currentAttribute != null) _currentAttribute.Control.BackColor = Color.Transparent;
-                    SetAddPcf(attribute);
+                case FormFactorAction.Add:
+                    SetAddPcf(attribute, _formFactor);
                     log.LogData(EventType.Event, LogAction.AddingControl);
                     break;
 
-                case BpfFieldControlAction.Remove:
-                    attribute.RemoveCustomControl();
+                case FormFactorAction.Remove:
+                    attribute.RemoveCustomControl(_formFactor);
                     ResetPossiblePCF();
                     panelRight.Visible = false;
                     panelParams.Controls.Clear();
@@ -157,12 +150,40 @@ namespace Carfup.XTBPlugins.PCF2BPF
                     log.LogData(EventType.Event, LogAction.ControlRemoved);
                     break;
 
-                case BpfFieldControlAction.Edit:
-                    if (_currentAttribute != null) _currentAttribute.Control.BackColor = Color.Transparent;
-                    SetExistingPCFDetails(attribute);
+                case FormFactorAction.Edit:
+                    SetExistingPCFDetails(attribute, _formFactor);
                     log.LogData(EventType.Event, LogAction.ModifyingControl);
                     break;
             }
+        }
+
+        private void BpfFieldCtrl_OnActionRequested(object sender, BpfFieldControlActionEventArgs e)
+        {
+            var attribute = (FormAttribute)((BpfFieldControl)sender).Tag;
+            _currentAttribute = attribute;
+
+            attribute.bpfFieldControl.BackColor = Color.Transparent;
+
+            lblCurrentBpfField.Text = attribute.ToString();
+
+            switch (e.Action)
+            { 
+
+                case BpfFieldControlAction.Go:
+                    panelRight.Visible = true;
+                    panelFormFactor.Controls.Clear();
+
+                    var formFactorControl = new FormFactorControl(attribute);
+                    formFactorControl.Tag = attribute;
+                    formFactorControl.OnActionRequested += FormFactorCtrl_OnActionRequested;
+                    attribute.Control = formFactorControl;
+                    panelFormFactor.Controls.Add(formFactorControl);
+
+                    break;
+            }
+
+            ResetPossiblePCF();
+            panelParams.Controls.Clear();
         }
 
         private void btnAddApplyControl_Click(object sender, EventArgs e)
@@ -177,19 +198,19 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
             if (actionInProgress == actions.modify)
             {
-                _currentAttribute.EditCustomControl(pcfEditing);
+                _currentAttribute.EditCustomControl(pcfEditing, _formFactor);
                 log.LogData(EventType.Event, LogAction.ControlModified);
             }
             else if (actionInProgress == actions.add)
             {
-                _currentAttribute.AddCustomControl(pcfEditing);
+                _currentAttribute.AddCustomControl(pcfEditing, _formFactor);
                 log.LogData(EventType.Event, LogAction.ControlAdded);
             }
 
-            panelRight.Visible = false;
             panelParams.Controls.Clear();
 
             txbModifiedFormXml.Text = bpfForm.GetCurrentXml();
+            ResetPossiblePCF();
         }
 
         private void btnLoadEntities_Click(object sender, EventArgs e)
@@ -271,7 +292,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
                                 var bpfFieldCtrl = new BpfFieldControl(attr.ToString()) { Dock = DockStyle.Top };
                                 bpfFieldCtrl.OnActionRequested += BpfFieldCtrl_OnActionRequested;
                                 bpfFieldCtrl.Tag = attr;
-                                attr.Control = bpfFieldCtrl;
+                                attr.bpfFieldControl = bpfFieldCtrl;
                                 ctrls.Add(bpfFieldCtrl);
                             }
                         }
@@ -311,11 +332,14 @@ namespace Carfup.XTBPlugins.PCF2BPF
                 {
                     pcfEditing = pcfAvailableDetailsList.First(x => x.Name == selectedPCF).Clone();
 
-                    _currentAttribute.PcfConfiguration = pcfEditing.Clone();
+                    _currentAttribute.PcfConfiguration[_formFactor] = pcfEditing;
+                    _currentAttribute.PcfConfiguration[_formFactor].AttachedField = _currentAttribute.LogicalName;
+                    _currentAttribute.PcfConfiguration[_formFactor].Parameters.First().value = _currentAttribute.LogicalName;
+                    _currentAttribute.PcfConfiguration[_formFactor].Id = _currentAttribute.UniqueId;
 
                     Invoke(new Action(() =>
                     {
-                        LoadParamToPanel(_currentAttribute.PcfConfiguration);
+                        LoadParamToPanel(_currentAttribute.PcfConfiguration[_formFactor]);
                     }));
                 },
                 PostWorkCallBack = e =>
@@ -385,7 +409,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             panelParams.Controls.Clear();
             var controls = new List<UserControl>();
 
-            if (pcf.Resxes.Any(r => r.IsLoaded == false))
+            if (pcf.Resxes != null && pcf.Resxes.Any(r => r.IsLoaded == false))
             {
                 pcf.Resxes.ForEach(r => r.Load(Service));
             }
@@ -503,6 +527,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             cbPossiblePCFs.Items.Clear();
             cbPossiblePCFs.SelectedIndex = -1;
             cbPossiblePCFs.ResetText();
+            cbPossiblePCFs.Enabled = false;
         }
 
         private void tsbClose_Click(object sender, EventArgs e)
@@ -516,6 +541,40 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.log.Flush();
 
             CloseTool();
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            txbModifiedFormXml.Text = bpfForm.GetCurrentXml();
+        }
+
+        private void btnCopyPcfFormFactor_Click(object sender, EventArgs e)
+        {
+            if(cbCopyFrom.SelectedItem == null || cbCopyTo.SelectedItem == null)
+            {
+                MessageBox.Show("Make sure you selected a From and a To.", "Missing info.", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var from = cbCopyFrom.SelectedIndex;
+            var to = cbCopyTo.SelectedIndex;
+
+            // So we copy a blank pcf field
+            if(_currentAttribute.PcfConfiguration[from].Name == null)
+            {
+                _currentAttribute.RemoveCustomControl(to);
+            }
+            else
+            {
+                _currentAttribute.PcfConfiguration[to] = _currentAttribute.PcfConfiguration[from].Clone(false);
+                _currentAttribute.PcfConfiguration[to].Id = _currentAttribute.UniqueId;
+
+                _currentAttribute.AddCustomControl(_currentAttribute.PcfConfiguration[from], to);
+            }
+            
+
+            cbCopyFrom.SelectedIndex = -1;
+            cbCopyTo.SelectedIndex = -1;
         }
     }
 }
