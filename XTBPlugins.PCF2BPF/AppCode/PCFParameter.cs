@@ -34,5 +34,25 @@ namespace Carfup.XTBPlugins.AppCode
 
         [DisplayName("Param Value")]
         public object value { get; set; }
+
+        public PCFParameter Clone()
+        {
+            var cloned = new PCFParameter
+            {
+                ofTypeGroup = ofTypeGroup,
+                ComplexValues = ComplexValues,
+                ComplexTypes = ComplexTypes,
+                ofType = ofType,
+                required = required,
+                usage = usage,
+                value = value,
+                description = description,
+                displayname = displayname,
+                isStatic = isStatic,
+                name = name
+            };
+
+            return cloned;
+        }
     }
 }
