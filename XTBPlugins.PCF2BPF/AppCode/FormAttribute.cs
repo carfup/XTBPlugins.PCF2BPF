@@ -79,7 +79,7 @@ namespace Carfup.XTBPlugins.AppCode
             }
 
             // Node controlDescriptionNode
-            if (_controlDescriptionNode.Attributes["forControl"] == null || _controlDescriptionNode.Attributes["forControl"]?.Value != UniqueId.ToString("B"))
+            if (_controlDescriptionNode?.Attributes["forControl"] == null || _controlDescriptionNode.Attributes["forControl"]?.Value != UniqueId.ToString("B"))
             {
                 _controlDescriptionNode = _controlNode.OwnerDocument.CreateElement("controlDescription");
                 controlDescriptionsNode.AppendChild(_controlDescriptionNode);
@@ -87,6 +87,8 @@ namespace Carfup.XTBPlugins.AppCode
                 var forControlAttr = _controlNode.OwnerDocument.CreateAttribute("forControl");
                 forControlAttr.Value = _uniqueId.ToString("B");
                 _controlDescriptionNode.Attributes.Append(forControlAttr);
+
+                
             }
 
             if(_controlDescriptionNode.SelectSingleNode($"customControl[@id=\"{ClassId}\"]") == null)
@@ -102,6 +104,9 @@ namespace Carfup.XTBPlugins.AppCode
                 defaultParametersNode.AppendChild(defaultParamNode);
                 defaultCustomControlNode.AppendChild(defaultParametersNode);
                 _controlDescriptionNode.AppendChild(defaultCustomControlNode);
+
+                // if we create the customcontrol => we set the PCF to the related PcfConfiguration
+                _pcfConfiguration[formFactor] = pcf;
             }
 
             // Node customControl
@@ -178,12 +183,16 @@ namespace Carfup.XTBPlugins.AppCode
 
         public void RemoveCustomControl(int formFactor)
         {
-            if(!PcfConfiguration.Any(x => x?.Name != null))
+            // be sure that there is only one PCF remaining to remove and this is the current one in deletion
+            // we remove the entire node for that field
+            if(PcfConfiguration.Count(x => x?.Name != null) == 1 && PcfConfiguration[formFactor]?.Name != null)
             {
                 _controlNode.Attributes.Remove(_controlNode.Attributes["uniqueid"]);
-                 _pcfConfiguration = null;
+                
+                // reset pcfconfiguration
+                _pcfConfiguration = new PCFDetails[3];
 
-                CustomControlNode.ParentNode.RemoveChild(CustomControlNode);
+                CustomControlNode?.ParentNode.RemoveChild(CustomControlNode);
                 _controlDescriptionNode = null;
             }
 

@@ -70,7 +70,8 @@ namespace Carfup.XTBPlugins.PCF2BPF
             actionInProgress = actions.add;
             panelParams.Controls.Clear();
 
-            attribute.PcfConfiguration[formFactor] = null;
+            if(attribute.PcfConfiguration != null)
+                attribute.PcfConfiguration[formFactor] = null;
 
             SetPossiblePCf(attribute);
         }
@@ -97,7 +98,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
         {
             ResetPossiblePCF();
             _currentAttribute = attribute;
-            _currentAttribute.Control.BackColor = Color.FromArgb(226, 226, 226);
+            
             var searchType = GetTypeMapping(attribute.Amd);
             var potentialPCFs = pcfAvailableDetailsList.Where(x => x.CompatibleDataTypes.Contains(searchType));
 
@@ -144,7 +145,6 @@ namespace Carfup.XTBPlugins.PCF2BPF
                 case FormFactorAction.Remove:
                     attribute.RemoveCustomControl(_formFactor);
                     ResetPossiblePCF();
-                    panelRight.Visible = false;
                     panelParams.Controls.Clear();
                     txbModifiedFormXml.Text = bpfForm.GetCurrentXml();
                     log.LogData(EventType.Event, LogAction.ControlRemoved);
@@ -159,10 +159,14 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
         private void BpfFieldCtrl_OnActionRequested(object sender, BpfFieldControlActionEventArgs e)
         {
+            // reset the background color
+            if(_currentAttribute != null && _currentAttribute.bpfFieldControl != null)
+                _currentAttribute.bpfFieldControl.BackColor = Color.Transparent;
+
             var attribute = (FormAttribute)((BpfFieldControl)sender).Tag;
             _currentAttribute = attribute;
 
-            attribute.bpfFieldControl.BackColor = Color.Transparent;
+            attribute.bpfFieldControl.BackColor = Color.FromArgb(226, 226, 226);
 
             lblCurrentBpfField.Text = attribute.ToString();
 
@@ -215,6 +219,8 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
         private void btnLoadEntities_Click(object sender, EventArgs e)
         {
+            panelRight.Visible = false;
+            panelStagesFields.Controls.Clear();
             ExecuteMethod(PrivateLoadEntities);
         }
 
@@ -560,7 +566,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             var to = cbCopyTo.SelectedIndex;
 
             // So we copy a blank pcf field
-            if(_currentAttribute.PcfConfiguration[from].Name == null)
+            if(_currentAttribute.PcfConfiguration[from]?.Name == null)
             {
                 _currentAttribute.RemoveCustomControl(to);
             }
@@ -571,7 +577,6 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
                 _currentAttribute.AddCustomControl(_currentAttribute.PcfConfiguration[from], to);
             }
-            
 
             cbCopyFrom.SelectedIndex = -1;
             cbCopyTo.SelectedIndex = -1;
