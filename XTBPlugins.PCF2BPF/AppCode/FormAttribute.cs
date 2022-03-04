@@ -24,26 +24,28 @@ namespace Carfup.XTBPlugins.AppCode
 
         public AttributeMetadata Amd { get; private set; }
         public BpfFieldControl bpfFieldControl { get; set; }
+        public string ClassId => _controlNode.Attributes["classid"].Value;
         public FormFactorControl Control { get; set; }
+
         // TO REPLACE
         public string CustomControlName => _controlDescriptionNode?.SelectSingleNode("customControl[@name]")?.Attributes["name"]?.Value;
+
         public XmlNode CustomControlNode => _controlDescriptionNode;
         public string DisplayName => _displayName;
         public EntityMetadata Emd { get; private set; }
         public string EntityDisplayName => _entityDisplayName;
         public string EntityLogicalName => _entityLogicalName;
         public string Id => _controlNode.Attributes["id"].Value;
-        public string ClassId => _controlNode.Attributes["classid"].Value;
         public string LogicalName => _controlNode.Attributes["datafieldname"].Value;
 
         // TO REPLACE
-        public PCFDetails[] PcfConfiguration 
+        public PCFDetails[] PcfConfiguration
         {
             get { return _pcfConfiguration; }
             set
             {
                 _pcfConfiguration = value;
-                foreach(var pcfconfig in _pcfConfiguration)
+                foreach (var pcfconfig in _pcfConfiguration)
                 {
                     if (pcfconfig != null && pcfconfig.Parameters.Count != 0 && string.IsNullOrEmpty(pcfconfig.Parameters.First().value?.ToString()))
                     {
@@ -62,8 +64,8 @@ namespace Carfup.XTBPlugins.AppCode
         {
             RemoveCustomControl(formFactor);
 
-            if(_controlNode.Attributes["id"]?.Value == null) 
-            { 
+            if (_controlNode.Attributes["id"]?.Value == null)
+            {
                 _uniqueId = Guid.NewGuid();
                 var uniqueIdAttr = _controlNode.OwnerDocument.CreateAttribute("uniqueid");
                 uniqueIdAttr.Value = _uniqueId.ToString("B");
@@ -87,11 +89,9 @@ namespace Carfup.XTBPlugins.AppCode
                 var forControlAttr = _controlNode.OwnerDocument.CreateAttribute("forControl");
                 forControlAttr.Value = _uniqueId.ToString("B");
                 _controlDescriptionNode.Attributes.Append(forControlAttr);
-
-                
             }
 
-            if(_controlDescriptionNode.SelectSingleNode($"customControl[@id=\"{ClassId}\"]") == null)
+            if (_controlDescriptionNode.SelectSingleNode($"customControl[@id=\"{ClassId}\"]") == null)
             {
                 // Default customControl Node
                 var defaultCustomControlNode = _controlNode.OwnerDocument.CreateElement("customControl");
@@ -185,26 +185,24 @@ namespace Carfup.XTBPlugins.AppCode
         {
             // be sure that there is only one PCF remaining to remove and this is the current one in deletion
             // we remove the entire node for that field
-            if(PcfConfiguration.Count(x => x?.Name != null) == 1 && PcfConfiguration[formFactor]?.Name != null)
+            if (PcfConfiguration.Count(x => x?.Name != null) == 1 && PcfConfiguration[formFactor]?.Name != null)
             {
                 _controlNode.Attributes.Remove(_controlNode.Attributes["uniqueid"]);
-                
+
                 // reset pcfconfiguration
                 _pcfConfiguration = new PCFDetails[3];
 
                 CustomControlNode?.ParentNode.RemoveChild(CustomControlNode);
                 _controlDescriptionNode = null;
             }
-
             else if (CustomControlNode != null)
             {
                 var node = CustomControlNode.SelectSingleNode($"customControl[@formFactor=\"{formFactor}\"]");
-                if(node != null)
+                if (node != null)
                 {
                     CustomControlNode.RemoveChild(CustomControlNode.SelectSingleNode($"customControl[@formFactor=\"{formFactor}\"]"));
                     _pcfConfiguration[formFactor] = null;
                 }
-                    
             }
 
             Control.showHideButtons();
@@ -216,7 +214,6 @@ namespace Carfup.XTBPlugins.AppCode
         {
             _uniqueId = _controlNode.Attributes["uniqueid"] != null ? new Guid(_controlNode.Attributes["uniqueid"].Value) : Guid.Empty;
             _controlDescriptionNode = _controlNode.OwnerDocument.SelectSingleNode($"//controlDescription[@forControl=\"{UniqueId:B}\"]");
-            
 
             if (_uniqueId != Guid.Empty && CustomControlNode == null)
             {
@@ -225,7 +222,7 @@ namespace Carfup.XTBPlugins.AppCode
 
             if (_controlDescriptionNode != null/* && pcfDefinition != null*/)
             {
-                for(int formFactor = 0; formFactor < 3; formFactor++)
+                for (int formFactor = 0; formFactor < 3; formFactor++)
                 //foreach (XmlNode _customControl in _controlDescriptionNode.SelectNodes("customControl[@formFactor]"))
                 {
                     XmlNode _customControl = _controlDescriptionNode.SelectSingleNode($"customControl[@formFactor=\"{formFactor}\"]");

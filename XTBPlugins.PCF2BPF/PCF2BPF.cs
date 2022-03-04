@@ -16,8 +16,6 @@ using XrmToolBox.Extensibility.Interfaces;
 
 namespace Carfup.XTBPlugins.PCF2BPF
 {
-    
-
     public partial class PCF2BPF : PluginControlBase, IGitHubPlugin, IPayPalPlugin
     {
         public LogUsageManager log = null;
@@ -70,7 +68,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             actionInProgress = actions.add;
             panelParams.Controls.Clear();
 
-            if(attribute.PcfConfiguration != null)
+            if (attribute.PcfConfiguration != null)
                 attribute.PcfConfiguration[formFactor] = null;
 
             SetPossiblePCf(attribute);
@@ -98,7 +96,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
         {
             ResetPossiblePCF();
             _currentAttribute = attribute;
-            
+
             var searchType = GetTypeMapping(attribute.Amd);
             var potentialPCFs = pcfAvailableDetailsList.Where(x => x.CompatibleDataTypes.Contains(searchType));
 
@@ -128,39 +126,10 @@ namespace Carfup.XTBPlugins.PCF2BPF
             base.UpdateConnection(newService, detail, actionName, parameter);
         }
 
-        private void FormFactorCtrl_OnActionRequested(object sender, FormFactorActionEventArgs e)
-        {
-            var attribute = (FormAttribute)((FormFactorControl)sender).Tag;
-
-            lblCurrentBpfField.Text = attribute.ToString();
-            _formFactor = (int)e.FormFactor;
-
-            switch (e.Action)
-            {
-                case FormFactorAction.Add:
-                    SetAddPcf(attribute, _formFactor);
-                    log.LogData(EventType.Event, LogAction.AddingControl);
-                    break;
-
-                case FormFactorAction.Remove:
-                    attribute.RemoveCustomControl(_formFactor);
-                    ResetPossiblePCF();
-                    panelParams.Controls.Clear();
-                    txbModifiedFormXml.Text = bpfForm.GetCurrentXml();
-                    log.LogData(EventType.Event, LogAction.ControlRemoved);
-                    break;
-
-                case FormFactorAction.Edit:
-                    SetExistingPCFDetails(attribute, _formFactor);
-                    log.LogData(EventType.Event, LogAction.ModifyingControl);
-                    break;
-            }
-        }
-
         private void BpfFieldCtrl_OnActionRequested(object sender, BpfFieldControlActionEventArgs e)
         {
             // reset the background color
-            if(_currentAttribute != null && _currentAttribute.bpfFieldControl != null)
+            if (_currentAttribute != null && _currentAttribute.bpfFieldControl != null)
                 _currentAttribute.bpfFieldControl.BackColor = Color.Transparent;
 
             var attribute = (FormAttribute)((BpfFieldControl)sender).Tag;
@@ -171,8 +140,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             lblCurrentBpfField.Text = attribute.ToString();
 
             switch (e.Action)
-            { 
-
+            {
                 case BpfFieldControlAction.Go:
                     panelRight.Visible = true;
                     panelFormFactor.Controls.Clear();
@@ -217,6 +185,34 @@ namespace Carfup.XTBPlugins.PCF2BPF
             ResetPossiblePCF();
         }
 
+        private void btnCopyPcfFormFactor_Click(object sender, EventArgs e)
+        {
+            if (cbCopyFrom.SelectedItem == null || cbCopyTo.SelectedItem == null)
+            {
+                MessageBox.Show("Make sure you selected a From and a To.", "Missing info.", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var from = cbCopyFrom.SelectedIndex;
+            var to = cbCopyTo.SelectedIndex;
+
+            // So we copy a blank pcf field
+            if (_currentAttribute.PcfConfiguration[from]?.Name == null)
+            {
+                _currentAttribute.RemoveCustomControl(to);
+            }
+            else
+            {
+                _currentAttribute.PcfConfiguration[to] = _currentAttribute.PcfConfiguration[from].Clone(false);
+                _currentAttribute.PcfConfiguration[to].Id = _currentAttribute.UniqueId;
+
+                _currentAttribute.AddCustomControl(_currentAttribute.PcfConfiguration[from], to);
+            }
+
+            cbCopyFrom.SelectedIndex = -1;
+            cbCopyTo.SelectedIndex = -1;
+        }
+
         private void btnLoadEntities_Click(object sender, EventArgs e)
         {
             panelRight.Visible = false;
@@ -247,6 +243,11 @@ namespace Carfup.XTBPlugins.PCF2BPF
                 },
                 ProgressChanged = e => { SetWorkingMessage(e.UserState.ToString()); }
             });
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            txbModifiedFormXml.Text = bpfForm.GetCurrentXml();
         }
 
         private void cbBPFEntitiesList_SelectedIndexChanged(object sender, EventArgs evt)
@@ -361,6 +362,35 @@ namespace Carfup.XTBPlugins.PCF2BPF
                 },
                 ProgressChanged = e => { SetWorkingMessage(e.UserState.ToString()); }
             });
+        }
+
+        private void FormFactorCtrl_OnActionRequested(object sender, FormFactorActionEventArgs e)
+        {
+            var attribute = (FormAttribute)((FormFactorControl)sender).Tag;
+
+            lblCurrentBpfField.Text = attribute.ToString();
+            _formFactor = (int)e.FormFactor;
+
+            switch (e.Action)
+            {
+                case FormFactorAction.Add:
+                    SetAddPcf(attribute, _formFactor);
+                    log.LogData(EventType.Event, LogAction.AddingControl);
+                    break;
+
+                case FormFactorAction.Remove:
+                    attribute.RemoveCustomControl(_formFactor);
+                    ResetPossiblePCF();
+                    panelParams.Controls.Clear();
+                    txbModifiedFormXml.Text = bpfForm.GetCurrentXml();
+                    log.LogData(EventType.Event, LogAction.ControlRemoved);
+                    break;
+
+                case FormFactorAction.Edit:
+                    SetExistingPCFDetails(attribute, _formFactor);
+                    log.LogData(EventType.Event, LogAction.ModifyingControl);
+                    break;
+            }
         }
 
         private string GetTypeMapping(AttributeMetadata amd, bool fromAttrToPcf = true)
@@ -501,9 +531,8 @@ namespace Carfup.XTBPlugins.PCF2BPF
                     var pcflist = this.controllerManager.dataManager.RetrievePcfList();
 
                     pcfAvailableDetailsList.Clear();
-                    foreach(var pcf in pcflist)
+                    foreach (var pcf in pcflist)
                         pcfAvailableDetailsList.Add(PCFDetails.Load(pcf, userLcid));
-                    
                 },
                 PostWorkCallBack = e =>
                 {
@@ -547,39 +576,6 @@ namespace Carfup.XTBPlugins.PCF2BPF
             this.log.Flush();
 
             CloseTool();
-        }
-
-        private void button1_Click(object sender, EventArgs e)
-        {
-            txbModifiedFormXml.Text = bpfForm.GetCurrentXml();
-        }
-
-        private void btnCopyPcfFormFactor_Click(object sender, EventArgs e)
-        {
-            if(cbCopyFrom.SelectedItem == null || cbCopyTo.SelectedItem == null)
-            {
-                MessageBox.Show("Make sure you selected a From and a To.", "Missing info.", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            var from = cbCopyFrom.SelectedIndex;
-            var to = cbCopyTo.SelectedIndex;
-
-            // So we copy a blank pcf field
-            if(_currentAttribute.PcfConfiguration[from]?.Name == null)
-            {
-                _currentAttribute.RemoveCustomControl(to);
-            }
-            else
-            {
-                _currentAttribute.PcfConfiguration[to] = _currentAttribute.PcfConfiguration[from].Clone(false);
-                _currentAttribute.PcfConfiguration[to].Id = _currentAttribute.UniqueId;
-
-                _currentAttribute.AddCustomControl(_currentAttribute.PcfConfiguration[from], to);
-            }
-
-            cbCopyFrom.SelectedIndex = -1;
-            cbCopyTo.SelectedIndex = -1;
         }
     }
 }
