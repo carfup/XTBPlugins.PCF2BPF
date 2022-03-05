@@ -246,17 +246,14 @@
     </Reference>
     <Reference Include="WindowsBase" />
     <Reference Include="WindowsFormsIntegration" />
-    <Reference Include="XrmToolBox, Version=1.2021.12.53, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\XrmToolBoxPackage.1.2021.12.53\lib\net462\XrmToolBox.exe</HintPath>
+    <Reference Include="XrmToolBox, Version=1.2022.2.54, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\XrmToolBoxPackage.1.2022.2.54\lib\net462\XrmToolBox.exe</HintPath>
     </Reference>
-    <Reference Include="XrmToolBox.AutoUpdater, Version=1.1.0.2, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\XrmToolBoxPackage.1.2021.12.53\lib\net462\XrmToolBox.AutoUpdater.exe</HintPath>
+    <Reference Include="XrmToolBox.Extensibility, Version=1.2022.2.54, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\XrmToolBoxPackage.1.2022.2.54\lib\net462\XrmToolBox.Extensibility.dll</HintPath>
     </Reference>
-    <Reference Include="XrmToolBox.Extensibility, Version=1.2021.12.53, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\XrmToolBoxPackage.1.2021.12.53\lib\net462\XrmToolBox.Extensibility.dll</HintPath>
-    </Reference>
-    <Reference Include="XrmToolBox.PluginsStore, Version=1.2021.12.53, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\XrmToolBoxPackage.1.2021.12.53\lib\net462\XrmToolBox.PluginsStore.dll</HintPath>
+    <Reference Include="XrmToolBox.PluginsStore, Version=1.2022.2.54, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\XrmToolBoxPackage.1.2022.2.54\lib\net462\XrmToolBox.PluginsStore.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

@@ -49,7 +49,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             }
         }
 
-        public string DonationDescription => "Thanks a lot for your support, this really mean something to me, and push me to keep going for sure ! Long life to PCF2BPF ! =)";
+        public string DonationDescription => "PCF 2 BPF Support Team.";
         public string EmailAccount => "clement@carfup.com";
         public string RepositoryName => "XTBPlugins.PCF2BPF";
         public string UserName => "carfup";
