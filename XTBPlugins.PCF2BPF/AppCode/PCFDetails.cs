@@ -73,7 +73,7 @@ namespace Carfup.XTBPlugins.AppCode
 
                 if (prop.Attributes["of-type-group"]?.Value != null)
                 {
-                    complexTypes = typeGroupValues.Select(x => x.type).ToList();
+                    complexTypes = typeGroupValues.Where(x => x.name == prop.Attributes["of-type-group"]?.Value).Select(x => x.type).ToList();
                 }
 
                 pcfParams.Add(new PCFParameter
