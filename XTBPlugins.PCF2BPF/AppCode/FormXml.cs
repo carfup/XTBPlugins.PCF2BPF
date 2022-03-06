@@ -78,7 +78,7 @@ namespace Carfup.XTBPlugins.AppCode
 
             service.Update(_systemForm);
 
-            var paramXml = string.Format(" <importexportxml><entities><entity>{0}</entity></entities><nodes/><securityroles/><settings/><workflows/></importexportxml>", _systemForm.GetAttributeValue<string>("objecttypecode"));
+            var paramXml = string.Format("<importexportxml><entities><entity>{0}</entity></entities><nodes/><securityroles/><settings/><workflows/></importexportxml>", _systemForm.GetAttributeValue<string>("objecttypecode"));
             service.Execute(new PublishXmlRequest
             {
                 ParameterXml = paramXml
@@ -90,12 +90,35 @@ namespace Carfup.XTBPlugins.AppCode
             _document = new XmlDocument();
             _document.LoadXml(_systemForm.GetAttributeValue<string>("formxml"));
 
+            CleanOrphanNodes();
+            _document.LoadXml(_document.InnerXml);
+
             Tabs = new List<FormTab>();
             int i = 0;
             foreach (XmlNode tabNode in _document.SelectNodes("//tab"))
             {
                 Tabs.Add(new FormTab(tabNode, ++i));
             }
+        }
+
+        public void CleanOrphanNodes()
+        {
+            // Looking for orphan ConstrolDescriptions
+            var controls = _document.SelectNodes(".//control");         
+            var pcfNodes = _document.SelectSingleNode(".//controlDescriptions");
+
+            foreach(XmlNode pcfNode in pcfNodes.ChildNodes)
+            {
+                var uniqueId = pcfNode.Attributes["forControl"].Value;
+                var relatedControlExist = controls.Cast<XmlNode>().Any(x => x.Attributes["uniqueid"]?.Value == uniqueId);
+
+                if(!relatedControlExist || pcfNode.SelectNodes(".//parameters").Count == 0)
+                {
+                    _document.InnerXml = _document.InnerXml.Replace(pcfNode.OuterXml, "");
+                }
+            }
+
+           // _document.Load(_document.OuterXml);
         }
     }
 }
