@@ -300,6 +300,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
                                 bpfFieldCtrl.OnActionRequested += BpfFieldCtrl_OnActionRequested;
                                 bpfFieldCtrl.Tag = attr;
                                 attr.bpfFieldControl = bpfFieldCtrl;
+                                attr.pcf2bpf = this;
                                 ctrls.Add(bpfFieldCtrl);
                             }
                         }
@@ -393,7 +394,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             }
         }
 
-        private string GetTypeMapping(AttributeMetadata amd, bool fromAttrToPcf = true)
+        public string GetTypeMapping(AttributeMetadata amd, bool fromAttrToPcf = true)
         {
             var typeToLookFor = amd.AttributeType.Value.ToString();
             if (amd.GetType() == typeof(StringAttributeMetadata))

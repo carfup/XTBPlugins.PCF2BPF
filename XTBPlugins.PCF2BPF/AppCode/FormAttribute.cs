@@ -16,6 +16,7 @@ namespace Carfup.XTBPlugins.AppCode
         private string _entityLogicalName;
         private PCFDetails[] _pcfConfiguration = new PCFDetails[3];
         private Guid _uniqueId;
+        public PCF2BPF.PCF2BPF pcf2bpf { get; set; }
 
         public FormAttribute(XmlNode controlNode)
         {
@@ -64,7 +65,7 @@ namespace Carfup.XTBPlugins.AppCode
         {
             RemoveCustomControl(formFactor);
 
-            if (_controlNode.Attributes["id"]?.Value == null)
+            if (_controlNode.Attributes["uniqueid"]?.Value == null)
             {
                 _uniqueId = Guid.NewGuid();
                 var uniqueIdAttr = _controlNode.OwnerDocument.CreateAttribute("uniqueid");
@@ -123,30 +124,60 @@ namespace Carfup.XTBPlugins.AppCode
             var parametersNode = _controlNode.OwnerDocument.CreateElement("parameters");
             customControlNode.AppendChild(parametersNode);
 
+            bool firstParam = true;
             foreach (var param in pcf.Parameters)
             {
                 var paramNode = _controlNode.OwnerDocument.CreateElement(param.name);
-                if (param.usage == "bound")
+                if (param.usage == "bound" && firstParam)
                 {
                     paramNode.InnerText = LogicalName;
                 }
                 else
                 {
-                    paramNode.InnerText = param.value?.ToString() ?? "";
-
-                    var staticAttr = _controlNode.OwnerDocument.CreateAttribute("static");
-                    staticAttr.Value = param.isStatic ? "true" : "false";
-                    paramNode.Attributes.Append(staticAttr);
-
-                    var typeAttr = _controlNode.OwnerDocument.CreateAttribute("type");
-                    typeAttr.Value = param.ofType;
-                    paramNode.Attributes.Append(typeAttr);
+                    paramNode = SetNotPrimaryParamDetails(paramNode, param);
                 }
 
                 parametersNode.AppendChild(paramNode);
+                firstParam = false;
             }
 
             Control.showHideButtons();
+        }
+
+        public XmlElement SetNotPrimaryParamDetails(XmlElement paramNode, PCFParameter param)
+        {
+            // value
+            paramNode.InnerText = param.value?.ToString() ?? "";
+
+            // Is Static
+            var staticAttr = _controlNode.OwnerDocument.CreateAttribute("static");
+            staticAttr.Value = param.isStatic ? "true" : "false";
+            paramNode.Attributes.Append(staticAttr);
+
+            // Of Type
+            var typeAttr = _controlNode.OwnerDocument.CreateAttribute("type");
+            if (param.ComplexTypes.Count() > 1)
+            {
+                if (param.isStatic || param.value == null)
+                {
+                    typeAttr.Value = param.ComplexTypes.First();
+                } 
+                else
+                {
+                    var amd = Emd.Attributes.FirstOrDefault(a => a.LogicalName == param.value.ToString());
+                    if (amd == null) return paramNode;
+
+                    var type = this.pcf2bpf.GetTypeMapping(amd);
+                    typeAttr.Value = type;
+                }               
+            }
+            else
+            {
+                typeAttr.Value = param.ofType;
+            }
+
+            paramNode.Attributes.Append(typeAttr);
+            return paramNode;
         }
 
         public void EditCustomControl(PCFDetails pcf, int formFactor)
@@ -154,27 +185,22 @@ namespace Carfup.XTBPlugins.AppCode
             var parametersNode = _controlDescriptionNode.SelectSingleNode($"customControl[@formFactor=\"{formFactor}\"]").SelectSingleNode(".//parameters");
             if (parametersNode != null)
             {
+                var firstParam = true;
                 foreach (var param in pcf.Parameters)
                 {
                     var paramNode = parametersNode.SelectSingleNode(param.name);
                     paramNode.Attributes.RemoveAll();
 
-                    if (param.usage == "bound")
+                    if (param.usage == "bound" && firstParam)
                     {
                         paramNode.InnerText = LogicalName;
                     }
                     else
                     {
-                        paramNode.InnerText = param.value?.ToString() ?? "";
-
-                        var staticAttr = _controlNode.OwnerDocument.CreateAttribute("static");
-                        staticAttr.Value = param.isStatic ? "true" : "false";
-                        paramNode.Attributes.Append(staticAttr);
-
-                        var typeAttr = _controlNode.OwnerDocument.CreateAttribute("type");
-                        typeAttr.Value = param.ofType;
-                        paramNode.Attributes.Append(typeAttr);
+                        paramNode = SetNotPrimaryParamDetails(paramNode as XmlElement, param);
                     }
+
+                    firstParam = false;
                 }
             }
 
