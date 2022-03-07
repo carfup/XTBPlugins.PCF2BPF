@@ -51,5 +51,7 @@ namespace Carfup.XTBPlugins.AppCode
         public const string PossiblePcfSet = "PossiblePcfSet";
         public const string ExistingPcfDetailsLoaded = "ExistingPcfDetailsLoaded";
         public const string FieldTypeNotSupported = "FieldTypeNotSupported";
+        public const string FormFactorCopied = "FormFactorCopied";
+        public const string ConnectionUpdated = "ConnectionUpdated";
     }
 }

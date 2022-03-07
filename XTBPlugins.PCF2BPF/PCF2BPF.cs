@@ -49,7 +49,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
             }
         }
 
-        public string DonationDescription => "PCF 2 BPF Support Team.";
+        public string DonationDescription => "PCF 2 BPF Support Team";
         public string EmailAccount => "clement@carfup.com";
         public string RepositoryName => "XTBPlugins.PCF2BPF";
         public string UserName => "carfup";
@@ -124,6 +124,7 @@ namespace Carfup.XTBPlugins.PCF2BPF
         public override void UpdateConnection(IOrganizationService newService, ConnectionDetail detail, string actionName, object parameter)
         {
             base.UpdateConnection(newService, detail, actionName, parameter);
+            log.LogData(EventType.Event, LogAction.ConnectionUpdated);
         }
 
         private void BpfFieldCtrl_OnActionRequested(object sender, BpfFieldControlActionEventArgs e)
@@ -185,32 +186,57 @@ namespace Carfup.XTBPlugins.PCF2BPF
             ResetPossiblePCF();
         }
 
-        private void btnCopyPcfFormFactor_Click(object sender, EventArgs e)
+        private void btnCopyPcfFormFactor_Click(object sender, EventArgs evt)
         {
+            var from = cbCopyFrom.SelectedIndex;
+            var to = cbCopyTo.SelectedIndex;
+
             if (cbCopyFrom.SelectedItem == null || cbCopyTo.SelectedItem == null)
             {
                 MessageBox.Show("Make sure you selected a From and a To.", "Missing info.", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            var from = cbCopyFrom.SelectedIndex;
-            var to = cbCopyTo.SelectedIndex;
-
-            // So we copy a blank pcf field
-            if (_currentAttribute.PcfConfiguration[from]?.Name == null)
+            WorkAsync(new WorkAsyncInfo
             {
-                _currentAttribute.RemoveCustomControl(to);
-            }
-            else
-            {
-                _currentAttribute.PcfConfiguration[to] = _currentAttribute.PcfConfiguration[from].Clone(false);
-                _currentAttribute.PcfConfiguration[to].Id = _currentAttribute.UniqueId;
+                Message = "Coyping Form Factor ...",
+                Work = (bw, e) =>
+                {
+                    // So we copy a blank pcf field
+                    if (_currentAttribute.PcfConfiguration[from]?.Name == null)
+                    {
+                        _currentAttribute.RemoveCustomControl(to);
+                    }
+                    else
+                    {
+                        _currentAttribute.PcfConfiguration[to] = _currentAttribute.PcfConfiguration[from].Clone(false);
+                        _currentAttribute.PcfConfiguration[to].Id = _currentAttribute.UniqueId;
 
-                _currentAttribute.AddCustomControl(_currentAttribute.PcfConfiguration[from], to);
-            }
+                        _currentAttribute.AddCustomControl(_currentAttribute.PcfConfiguration[from], to);
+                    }
 
-            cbCopyFrom.SelectedIndex = -1;
-            cbCopyTo.SelectedIndex = -1;
+                   /* Invoke(new Action(() =>
+                    {
+                        LoadParamToPanel(_currentAttribute.PcfConfiguration[_formFactor]);
+                    }));
+                   */
+                },
+                PostWorkCallBack = e =>
+                {
+                    if (e.Error != null)
+                    {
+                        log.LogData(EventType.Exception, LogAction.FormFactorCopied, e.Error);
+                        MessageBox.Show(this, e.Error.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    cbCopyFrom.SelectedIndex = -1;
+                    cbCopyTo.SelectedIndex = -1;
+
+                    log.LogData(EventType.Event, LogAction.FormFactorCopied);
+                },
+                ProgressChanged = e => { SetWorkingMessage(e.UserState.ToString()); }
+            });
         }
 
         private void btnLoadEntities_Click(object sender, EventArgs e)
@@ -243,11 +269,6 @@ namespace Carfup.XTBPlugins.PCF2BPF
                 },
                 ProgressChanged = e => { SetWorkingMessage(e.UserState.ToString()); }
             });
-        }
-
-        private void button1_Click(object sender, EventArgs e)
-        {
-            txbModifiedFormXml.Text = bpfForm.GetCurrentXml();
         }
 
         private void cbBPFEntitiesList_SelectedIndexChanged(object sender, EventArgs evt)
