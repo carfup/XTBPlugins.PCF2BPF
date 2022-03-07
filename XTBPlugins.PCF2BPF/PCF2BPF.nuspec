@@ -13,6 +13,8 @@
     <releaseNotes>
 1.2022.3.5
 Introducing the support for multi Form Factor (web, tablet, phone)
+Cleaning functionality of 'orphan' controlDescription nodes
+Fixes around the complex types of a parameter
 Improved UI
 
 1.2022.2.3/4
