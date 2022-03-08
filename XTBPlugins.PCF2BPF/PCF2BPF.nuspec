@@ -1,7 +1,7 @@
 ﻿<package>
   <metadata>
     <id>Carfup.XTBPlugins.PCF2BPF</id>
-    <version>1.2022.2.4</version>
+    <version>1.2022.3.5</version>
     <title>PCF 2 BPF</title>
     <authors>Clement Olivier and Tanguy Touzard</authors>
     <owners>Clement Olivier</owners>
@@ -11,6 +11,12 @@
     <description>This tool will allow you add,modify or remove a PCF control attached to a field within your BPF in few clicks only.</description>
     <summary>Manage PCF control within your BPF.</summary>
     <releaseNotes>
+1.2022.3.5
+Introducing the support for multi Form Factor (web, tablet, phone)
+Cleaning functionality of 'orphan' controlDescription nodes
+Fixes around the complex types of a parameter
+Improved UI
+
 1.2022.2.3/4
 Bug fixing and optimizations
 

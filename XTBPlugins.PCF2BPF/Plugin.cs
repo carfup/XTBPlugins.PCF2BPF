@@ -20,12 +20,11 @@ namespace Carfup.XTBPlugins.PCF2BPF
        ExportMetadata("BackgroundColor", "DarkGreen"),
        ExportMetadata("PrimaryFontColor", "White"),
        ExportMetadata("SecondaryFontColor", "LimeGreen")]
-    public class Plugin : PluginBase
+    public class Plugin : PluginBase, IPayPalPlugin
     {
-        public override IXrmToolBoxPluginControl GetControl()
-        {
-            return new PCF2BPF();
-        }
+        public string DonationDescription => "PCF 2 BPF Support Team";
+        public string EmailAccount => "clement@carfup.com";
+        public override IXrmToolBoxPluginControl GetControl() => new PCF2BPF();
 
       
 
