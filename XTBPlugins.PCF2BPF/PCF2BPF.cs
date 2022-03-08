@@ -201,24 +201,21 @@ namespace Carfup.XTBPlugins.PCF2BPF
                 Message = "Coyping Form Factor ...",
                 Work = (bw, e) =>
                 {
-                    // So we copy a blank pcf field
-                    if (_currentAttribute.PcfConfiguration[from]?.Name == null)
+                    Invoke(new Action(() =>
                     {
-                        _currentAttribute.RemoveCustomControl(to);
-                    }
-                    else
-                    {
-                        _currentAttribute.PcfConfiguration[to] = _currentAttribute.PcfConfiguration[from].Clone(false);
-                        _currentAttribute.PcfConfiguration[to].Id = _currentAttribute.UniqueId;
+                        // So we copy a blank pcf field
+                        if (_currentAttribute.PcfConfiguration[from]?.Name == null)
+                        {
+                            _currentAttribute.RemoveCustomControl(to);
+                        }
+                        else
+                        {
+                            _currentAttribute.PcfConfiguration[to] = _currentAttribute.PcfConfiguration[from].Clone(false);
+                            _currentAttribute.PcfConfiguration[to].Id = _currentAttribute.UniqueId;
 
-                        _currentAttribute.AddCustomControl(_currentAttribute.PcfConfiguration[from], to);
-                    }
-
-                   /* Invoke(new Action(() =>
-                    {
-                        LoadParamToPanel(_currentAttribute.PcfConfiguration[_formFactor]);
+                            _currentAttribute.AddCustomControl(_currentAttribute.PcfConfiguration[from], to);
+                        }
                     }));
-                   */
                 },
                 PostWorkCallBack = e =>
                 {

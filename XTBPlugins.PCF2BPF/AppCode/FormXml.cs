@@ -107,7 +107,16 @@ namespace Carfup.XTBPlugins.AppCode
             var controls = _document.SelectNodes(".//control");         
             var pcfNodes = _document.SelectSingleNode(".//controlDescriptions");
 
-            foreach(XmlNode pcfNode in pcfNodes.ChildNodes)
+            if (pcfNodes == null || controls == null)
+                return;
+
+            if(pcfNodes.ChildNodes.Count == 0)
+            {
+                _document.InnerXml = _document.InnerXml.Replace("<controlDescriptions></controlDescriptions>", "");
+                return;
+            }
+
+            foreach (XmlNode pcfNode in pcfNodes.ChildNodes)
             {
                 var uniqueId = pcfNode.Attributes["forControl"].Value;
                 var relatedControlExist = controls.Cast<XmlNode>().Any(x => x.Attributes["uniqueid"]?.Value == uniqueId);
