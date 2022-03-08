@@ -124,7 +124,6 @@ namespace Carfup.XTBPlugins.PCF2BPF
         public override void UpdateConnection(IOrganizationService newService, ConnectionDetail detail, string actionName, object parameter)
         {
             base.UpdateConnection(newService, detail, actionName, parameter);
-            log.LogData(EventType.Event, LogAction.ConnectionUpdated);
         }
 
         private void BpfFieldCtrl_OnActionRequested(object sender, BpfFieldControlActionEventArgs e)
