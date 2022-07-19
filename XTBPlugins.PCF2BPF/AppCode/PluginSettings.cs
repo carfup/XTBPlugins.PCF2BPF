@@ -53,5 +53,6 @@ namespace Carfup.XTBPlugins.AppCode
         public const string FieldTypeNotSupported = "FieldTypeNotSupported";
         public const string FormFactorCopied = "FormFactorCopied";
         public const string ConnectionUpdated = "ConnectionUpdated";
+        public const string LoadAPCF = "LoadAPCF";
     }
 }

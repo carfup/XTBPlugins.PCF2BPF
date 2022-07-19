@@ -550,7 +550,16 @@ namespace Carfup.XTBPlugins.PCF2BPF
 
                     pcfAvailableDetailsList.Clear();
                     foreach (var pcf in pcflist)
-                        pcfAvailableDetailsList.Add(PCFDetails.Load(pcf, userLcid));
+                    {
+                        try
+                        {
+                            pcfAvailableDetailsList.Add(PCFDetails.Load(pcf, userLcid));
+                        }
+                        catch (Exception ex)
+                        {
+                            log.LogData(EventType.Exception, LogAction.LoadAPCF, ex);
+                        }
+                    }
                 },
                 PostWorkCallBack = e =>
                 {
