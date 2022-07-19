@@ -33,74 +33,82 @@ namespace Carfup.XTBPlugins.AppCode
 
         public static PCFDetails Load(Entity pcf, int userLcid)
         {
-            var doc = new XmlDocument();
-            doc.LoadXml(pcf.GetAttributeValue<string>("manifest"));
-
-            var properties = doc.SelectNodes("//property");
-            var typeGroups = doc.SelectNodes("//type-group");
-
-            var typeGroupValues = new List<PCFTypeGroup>();
-            foreach (XmlNode typeg in typeGroups)
+            try
             {
-                foreach (XmlNode type in typeg.SelectNodes("type"))
-                    typeGroupValues.Add(new PCFTypeGroup
+                var doc = new XmlDocument();
+                doc.LoadXml(pcf.GetAttributeValue<string>("manifest"));
+
+                var properties = doc.SelectNodes("//property");
+                var typeGroups = doc.SelectNodes("//type-group");
+
+                var typeGroupValues = new List<PCFTypeGroup>();
+                foreach (XmlNode typeg in typeGroups)
+                {
+                    foreach (XmlNode type in typeg.SelectNodes("type"))
+                        typeGroupValues.Add(new PCFTypeGroup
+                        {
+                            name = typeg.Attributes["name"]?.Value,
+                            type = type.InnerText,
+                        });
+                }
+                List<PCFResx> pcfResxes = new List<PCFResx>();
+
+                var resxes = doc.SelectNodes("//resx");
+                foreach (XmlNode resx in resxes)
+                {
+                    var pcfResx = new PCFResx(resx.Attributes["path"]?.Value,
+                        doc.SelectSingleNode("//control").Attributes["namespace"]?.Value,
+                        doc.SelectSingleNode("//control").Attributes["constructor"]?.Value);
+
+                    pcfResxes.Add(pcfResx);
+                }
+
+                List<PCFParameter> pcfParams = new List<PCFParameter>();
+                foreach (XmlNode prop in properties)
+                {
+                    var complexValues = new List<PCFEnumValue>();
+                    var complexTypes = new List<string>();
+                    if (prop.Attributes["of-type"]?.Value == "Enum")
                     {
-                        name = typeg.Attributes["name"]?.Value,
-                        type = type.InnerText,
+                        complexValues = prop.ChildNodes.Cast<XmlNode>()?.Select(x => new PCFEnumValue(x.Attributes["name"]?.Value, pcfResxes.FirstOrDefault(r => r.Lcid == userLcid)?.GetText(x.Attributes["display-name-key"]?.Value), x.InnerText)).ToList();
+                    }
+
+                    if (prop.Attributes["of-type-group"]?.Value != null)
+                    {
+                        complexTypes = typeGroupValues.Where(x => x.name == prop?.Attributes["of-type-group"]?.Value)?.Select(x => x.type).ToList();
+                    }
+
+                    pcfParams.Add(new PCFParameter
+                    {
+                        name = prop.Attributes["name"]?.Value,
+                        displayname = prop.Attributes["display-name-key"]?.Value,
+                        description = prop.Attributes["description-key"]?.Value,
+                        required = prop.Attributes["required"]?.Value == "true" ? true : false,
+                        usage = prop.Attributes["usage"]?.Value,
+                        ofType = prop.Attributes["of-type"]?.Value ?? prop.Attributes["of-type-group"]?.Value,
+                        ofTypeGroup = prop.Attributes["of-type-group"]?.Value,
+                        ComplexTypes = complexTypes.ToArray(),
+                        ComplexValues = complexValues
                     });
-            }
-            List<PCFResx> pcfResxes = new List<PCFResx>();
-
-            var resxes = doc.SelectNodes("//resx");
-            foreach (XmlNode resx in resxes)
-            {
-                var pcfResx = new PCFResx(resx.Attributes["path"]?.Value,
-                    doc.SelectSingleNode("//control").Attributes["namespace"]?.Value,
-                    doc.SelectSingleNode("//control").Attributes["constructor"]?.Value);
-
-                pcfResxes.Add(pcfResx);
-            }
-
-            List<PCFParameter> pcfParams = new List<PCFParameter>();
-            foreach (XmlNode prop in properties)
-            {
-                var complexValues = new List<PCFEnumValue>();
-                var complexTypes = new List<string>();
-                if (prop.Attributes["of-type"]?.Value == "Enum")
-                {
-                    complexValues = prop.ChildNodes.Cast<XmlNode>().Select(x => new PCFEnumValue(x.Attributes["name"]?.Value, pcfResxes.FirstOrDefault(r => r.Lcid == userLcid)?.GetText(x.Attributes["display-name-key"]?.Value), x.InnerText)).ToList();
                 }
 
-                if (prop.Attributes["of-type-group"]?.Value != null)
+                // Generating the full list of pcf details
+                return new PCFDetails
                 {
-                    complexTypes = typeGroupValues.Where(x => x.name == prop.Attributes["of-type-group"]?.Value).Select(x => x.type).ToList();
-                }
+                    Name = pcf.GetAttributeValue<string>("name"),
+                    Manifest = pcf.GetAttributeValue<string>("manifest"),
+                    CompatibleDataTypes = pcf.GetAttributeValue<string>("compatibledatatypes")?.Split(',').ToList(),
+                    Parameters = pcfParams,
+                    TypeGroups = typeGroupValues,
+                    Resxes = pcfResxes,
+                    Id = null
+                };
 
-                pcfParams.Add(new PCFParameter
-                {
-                    name = prop.Attributes["name"]?.Value,
-                    displayname = prop.Attributes["display-name-key"]?.Value,
-                    description = prop.Attributes["description-key"]?.Value,
-                    required = prop.Attributes["required"]?.Value == "true" ? true : false,
-                    usage = prop.Attributes["usage"]?.Value,
-                    ofType = prop.Attributes["of-type"]?.Value ?? prop.Attributes["of-type-group"]?.Value,
-                    ofTypeGroup = prop.Attributes["of-type-group"]?.Value,
-                    ComplexTypes = complexTypes.ToArray(),
-                    ComplexValues = complexValues
-                });
             }
-
-            // Generating the full list of pcf details
-            return new PCFDetails
+            catch (Exception ex)
             {
-                Name = pcf.GetAttributeValue<string>("name"),
-                Manifest = pcf.GetAttributeValue<string>("manifest"),
-                CompatibleDataTypes = pcf.GetAttributeValue<string>("compatibledatatypes")?.Split(',').ToList(),
-                Parameters = pcfParams,
-                TypeGroups = typeGroupValues,
-                Resxes = pcfResxes,
-                Id = null
-            };
+                throw new Exception($"Error while loading the PCF : {pcf.GetAttributeValue<string>("name")}", ex.InnerException);
+            }
         }
 
         public PCFDetails Clone(bool resetValues = true)
